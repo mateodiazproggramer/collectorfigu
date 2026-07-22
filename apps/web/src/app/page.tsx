@@ -7,6 +7,7 @@ import { TrustStrip } from '@/components/trust-strip';
 import { WhatsAppIcon } from '@/components/whatsapp-icon';
 import { BUSINESS_PROOF, COMPANY_CONTACT, PRODUCT_LINES } from '@/lib/company';
 import { getProducts } from '@/lib/api';
+import { LINE_COLOR_CLASSES, productLineColor } from '@/lib/product-marketing';
 import { salesWhatsAppUrl, specialOrderWhatsAppUrl } from '@/lib/whatsapp';
 
 export const metadata: Metadata = {
@@ -40,13 +41,13 @@ export default async function HomePage() {
       <section className="relative overflow-hidden bg-brand-dark text-white">
         <div className="absolute inset-0 bg-brand-radial" />
         <div className="absolute inset-0 bg-tech-grid bg-[size:42px_42px] opacity-50" />
-        <div className="container-page relative grid items-center gap-8 py-8 md:py-10 lg:min-h-[620px] lg:grid-cols-[1.05fr_.95fr] lg:py-12">
+        <div className="container-page relative grid items-center gap-8 py-14 md:py-20 lg:min-h-[620px] lg:grid-cols-[1.05fr_.95fr] lg:py-12">
           <div>
             <p className="badge-brand">El que colecciona, entiende</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight md:text-6xl">
+            <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[1.05] tracking-tight md:text-6xl">
               Algunas historias están hechas para durar. <span className="brand-gradient-text">Tenlas en tus manos.</span>
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-white/70 md:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-7 text-white/70 md:text-lg">
               Convertimos a tus personajes favoritos en piezas para tener, regalar y presumir: minifiguras, cuadros personalizados, llaveros y sets, de Star Wars al anime, del gaming al fútbol. 100% hecho en Colombia, con envíos a toda Colombia.
             </p>
             <form action="/productos" className="mt-6 max-w-2xl rounded-[1.7rem] border border-white/10 bg-white/10 p-2 shadow-glow backdrop-blur-xl sm:flex">
@@ -54,8 +55,8 @@ export default async function HomePage() {
               <button className="btn-primary w-full sm:w-auto" type="submit">Buscar figuras <ArrowRight size={18} className="ml-2" /></button>
             </form>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/productos" className="btn-primary">Ver catálogo completo</Link>
-              <a href={salesWhatsAppUrl('Inicio del sitio')} target="_blank" rel="noreferrer" className="btn-secondary"><WhatsAppIcon size={18} className="mr-2" /> Realizar pedido por WhatsApp</a>
+              <Link href="/productos" className="btn-secondary">Ver catálogo completo</Link>
+              <a href={salesWhatsAppUrl('Inicio del sitio')} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-center font-bold text-white/80 transition hover:text-white"><WhatsAppIcon size={18} /> Realizar pedido por WhatsApp</a>
             </div>
             <div className="mt-6 grid max-w-2xl gap-3 sm:grid-cols-2">
               {BUSINESS_PROOF.slice(0, 4).map((item) => (
@@ -68,8 +69,18 @@ export default async function HomePage() {
           </div>
 
           <div className="relative hidden lg:block">
-            <div className="brand-panel relative overflow-hidden rounded-[2.3rem] p-6">
-              <Image src="/brand/collectorfigu-logo-hero.png" alt="CollectorFigu" width={820} height={820} priority className="w-full rounded-[1.7rem] object-cover shadow-2xl" />
+            <div className="absolute -inset-6 rounded-[3rem] bg-brand-radial opacity-80 blur-2xl" aria-hidden="true" />
+            <div className="relative rounded-[2.3rem] border border-white/10 bg-white/[0.06] p-4 shadow-glow backdrop-blur-xl">
+              <div className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-brand-violet/25 via-transparent to-brand-pop/20 p-8">
+                <div className="absolute inset-0 bg-tech-grid bg-[size:34px_34px] opacity-40" aria-hidden="true" />
+                <Image src="/brand/collectorfigu-logo-hero.png" alt="CollectorFigu" width={820} height={820} priority className="relative w-full rounded-[1.4rem] object-contain drop-shadow-2xl" />
+              </div>
+            </div>
+            <div className="absolute -left-4 top-10 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-brand-dark/90 px-3 py-2 text-xs font-black text-white shadow-card backdrop-blur">
+              <CheckCircle2 size={15} className="text-brand-green" /> Hecho en Colombia
+            </div>
+            <div className="absolute -right-4 bottom-12 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-brand-dark/90 px-3 py-2 text-xs font-black text-white shadow-card backdrop-blur">
+              <Sparkles size={15} className="text-brand-gold" /> Nuevas figuras cada semana
             </div>
           </div>
         </div>
@@ -77,61 +88,67 @@ export default async function HomePage() {
 
       <TrustStrip />
 
-      <section className="container-page py-8 md:py-10">
+      <section className="container-page py-14 md:py-20">
         <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.22em] text-brand-blueInk">Nuestras 4 líneas</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Un mismo insight: no compras una figura, compras lo que amas</h2>
-            <p className="mt-2 max-w-2xl text-slate-600">Minifiguras, cuadros personalizados, llaveros y sets — cada línea con su propio rol, todas con tus personajes favoritos.</p>
+            <p className="mt-2 max-w-2xl text-brand-inkSoft">Minifiguras, cuadros personalizados, llaveros y sets — cada línea con su propio rol, todas con tus personajes favoritos.</p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PRODUCT_LINES.map((line) => {
             const Icon = lineIcons[line.name as keyof typeof lineIcons];
+            const lc = LINE_COLOR_CLASSES[productLineColor(line.name)];
             return (
-              <Link key={line.name} href={`/productos?category=${encodeURIComponent(line.name)}`} className="group rounded-[1.75rem] border border-brand-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-brand-pop/40 hover:shadow-glow">
-                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-brand-pop">{line.eyebrow}</p>
-                <div className="mt-3 inline-flex rounded-2xl bg-brand-violet/10 p-3 text-brand-violet transition group-hover:bg-brand-violet group-hover:text-white">
-                  <Icon size={22} />
+              <Link key={line.name} href={`/productos?category=${encodeURIComponent(line.name)}`} className={`group overflow-hidden rounded-[1.75rem] border border-brand-line bg-white shadow-soft transition hover:-translate-y-1 hover:shadow-glow ${lc.borderHover}`}>
+                <div className={`h-1.5 w-full ${lc.bar}`} aria-hidden="true" />
+                <div className="p-5">
+                  <p className={`font-mono text-[11px] font-bold uppercase tracking-[0.14em] ${lc.text}`}>{line.eyebrow}</p>
+                  <div className={`mt-3 inline-flex rounded-2xl p-3 transition group-hover:text-white ${lc.chipBg} ${lc.chipText} ${lc.chipHoverBg}`}>
+                    <Icon size={22} />
+                  </div>
+                  <h3 className="mt-4 text-lg font-black text-brand-ink">{line.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-brand-inkSoft">{line.description}</p>
+                  <p className={`mt-3 font-mono text-xs font-bold ${lc.text}`}>{line.price}</p>
                 </div>
-                <h3 className="mt-4 text-lg font-black text-slate-950">{line.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{line.description}</p>
-                <p className="mt-3 font-mono text-xs font-bold text-brand-violet">{line.price}</p>
               </Link>
             );
           })}
         </div>
       </section>
 
-      <section className="container-page py-8 md:py-10">
+      <section className="bg-gradient-to-b from-brand-violet/[0.06] via-transparent to-transparent">
+        <div className="container-page py-14 md:py-20">
         <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.22em] text-brand-blueInk">Explora por fandom</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Cada franquicia, su propia coleccion</h2>
-            <p className="mt-2 max-w-2xl text-slate-600">Encuentra tus personajes favoritos organizados por franquicia, no por listados genericos.</p>
+            <p className="mt-2 max-w-2xl text-brand-inkSoft">Encuentra tus personajes favoritos organizados por franquicia, no por listados genericos.</p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {franchiseHighlights.map((franchise) => (
-            <Link key={franchise.href} href={franchise.href} className="group rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-brand-blue/30 hover:shadow-glow">
+            <Link key={franchise.href} href={franchise.href} className="group rounded-[1.75rem] border border-brand-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-brand-blue/30 hover:shadow-glow">
               <div className="inline-flex rounded-2xl bg-brand-blue/10 p-3 text-brand-blue transition group-hover:bg-brand-blue group-hover:text-white">
                 <Blocks size={22} />
               </div>
-              <h3 className="mt-4 text-lg font-black text-slate-950">{franchise.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{franchise.description}</p>
+              <h3 className="mt-4 text-lg font-black text-brand-ink">{franchise.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-brand-inkSoft">{franchise.description}</p>
               <span className="mt-4 inline-flex items-center text-xs font-black uppercase tracking-[0.14em] text-brand-blue">Ver figuras <ArrowRight size={14} className="ml-1" /></span>
             </Link>
           ))}
         </div>
+        </div>
       </section>
 
-      <section className="container-page py-8 md:py-10">
+      <section className="container-page py-14 md:py-20">
         <div className="rounded-[2rem] border border-brand-blue/15 bg-white p-5 shadow-soft md:p-7">
           <div className="grid gap-5 md:grid-cols-[1fr_1.1fr] md:items-center">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.22em] text-brand-blueInk">Como comprar</p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">De la busqueda al paquete en tu puerta</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-brand-ink">De la busqueda al paquete en tu puerta</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-brand-inkSoft md:text-base">
                 Compra segura, pagos por Wompi, transferencia o contraentrega, y asesoria directa por WhatsApp e Instagram antes de finalizar tu pedido.
               </p>
             </div>
@@ -139,11 +156,11 @@ export default async function HomePage() {
               {howToBuySteps.map((step, index) => {
                 const Icon = step.icon;
                 return (
-                  <div key={step.title} className="rounded-2xl bg-slate-50 p-4">
+                  <div key={step.title} className="rounded-2xl bg-brand-paper2 p-4">
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-blue/10 text-xs font-black text-brand-blue">{index + 1}</span>
                     <Icon size={20} className="mt-3 text-brand-blue" />
-                    <p className="mt-2 text-sm font-black text-slate-900">{step.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">{step.text}</p>
+                    <p className="mt-2 text-sm font-black text-brand-ink">{step.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-brand-inkSoft">{step.text}</p>
                   </div>
                 );
               })}
@@ -152,8 +169,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="container-page py-8 md:py-10">
-        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft lg:grid lg:grid-cols-[.95fr_1.05fr]">
+      <section className="container-page py-14 md:py-20">
+        <div className="overflow-hidden rounded-[2rem] border border-brand-line bg-white shadow-soft lg:grid lg:grid-cols-[.95fr_1.05fr]">
           <div className="relative flex min-h-64 items-center justify-center overflow-hidden bg-brand-dark bg-brand-radial p-10 lg:min-h-full">
             <div className="absolute inset-0 bg-tech-grid bg-[size:40px_40px] opacity-60" />
             <Gift size={140} className="relative text-brand-cyan" strokeWidth={1.2} />
@@ -164,14 +181,14 @@ export default async function HomePage() {
 
           <div className="grid content-center gap-5 p-6 md:p-8 lg:p-10">
             <p className="text-sm font-black uppercase tracking-[0.22em] text-brand-blueInk">No lo encuentras en el catalogo?</p>
-            <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">Armamos tu pedido especial</h2>
-            <p className="max-w-xl text-base leading-7 text-slate-600">
+            <h2 className="text-3xl font-black tracking-tight text-brand-ink md:text-4xl">Armamos tu pedido especial</h2>
+            <p className="max-w-xl text-base leading-7 text-brand-inkSoft">
               Personajes que no estan en el catalogo por el momento, sets de regalo personalizados y pedidos al por mayor para eventos. Cuentanos que necesitas.
             </p>
-            <div className="grid gap-3 text-sm font-semibold text-slate-600 sm:grid-cols-3">
-              <span className="rounded-2xl bg-slate-50 p-3">Personaje especifico</span>
-              <span className="rounded-2xl bg-slate-50 p-3">Set de regalo</span>
-              <span className="rounded-2xl bg-slate-50 p-3">Pedido al por mayor</span>
+            <div className="grid gap-3 text-sm font-semibold text-brand-inkSoft sm:grid-cols-3">
+              <span className="rounded-2xl bg-brand-paper2 p-3">Personaje especifico</span>
+              <span className="rounded-2xl bg-brand-paper2 p-3">Set de regalo</span>
+              <span className="rounded-2xl bg-brand-paper2 p-3">Pedido al por mayor</span>
             </div>
             <div className="flex flex-wrap gap-3">
               <a href={specialOrderWhatsAppUrl()} target="_blank" rel="noreferrer" className="btn-primary w-full sm:w-fit">
@@ -182,12 +199,13 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="container-page py-8 md:py-10">
+      <section className="bg-gradient-to-b from-brand-gold/[0.07] via-transparent to-transparent">
+        <div className="container-page py-14 md:py-20">
         <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.22em] text-brand-blueInk">Inventario destacado</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Nuevo en la colección</h2>
-            <p className="mt-2 max-w-2xl text-slate-600">Figuras destacadas de distintos fandoms, con precio claro, existencias, envio y compra segura.</p>
+            <p className="mt-2 max-w-2xl text-brand-inkSoft">Figuras destacadas de distintos fandoms, con precio claro, existencias, envio y compra segura.</p>
           </div>
           <Link href="/productos" className="btn-light">Ver todo el catalogo</Link>
         </div>
@@ -197,6 +215,7 @@ export default async function HomePage() {
             No pudimos cargar los productos en este momento. Escríbenos por WhatsApp para recibir asesoría.
           </div>
         ) : null}
+        </div>
       </section>
 
       <section className="container-page pb-10">

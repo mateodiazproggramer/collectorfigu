@@ -2,7 +2,7 @@ import Image from 'next/image';
 
 export function WompiPaymentArt({ className = '' }: { className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white p-2 shadow-soft ${className}`}>
+    <div className={`overflow-hidden rounded-[1.25rem] border border-brand-line bg-white p-2 shadow-soft ${className}`}>
       <Image
         src="/payments/wompi-payment-methods.svg"
         alt="Wompi con PSE, Bancolombia, Nequi, Visa, Mastercard y American Express"

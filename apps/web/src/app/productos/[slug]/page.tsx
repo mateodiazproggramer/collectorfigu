@@ -78,13 +78,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   return (
     <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
-      <section className="border-b border-slate-200 bg-white">
-        <div className="container-page flex flex-wrap items-center gap-2 py-4 text-sm font-semibold text-slate-500">
+      <section className="border-b border-brand-line bg-white">
+        <div className="container-page flex flex-wrap items-center gap-2 py-4 text-sm font-semibold text-brand-inkSoft">
           <Link href="/" className="hover:text-brand-blue">Inicio</Link>
           <span>/</span>
           <Link href="/productos" className="hover:text-brand-blue">Catalogo</Link>
           <span>/</span>
-          <span className="text-slate-900">{product.name}</span>
+          <span className="text-brand-ink">{product.name}</span>
         </div>
       </section>
 

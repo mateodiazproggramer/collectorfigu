@@ -107,6 +107,15 @@ type NormalizedImportRow = {
   specs: Record<string, string>;
 };
 
+export type ImportProgressEvent =
+  | { type: 'progress'; phase: 'parsing' | 'validating'; message: string }
+  | { type: 'progress'; phase: 'uploading'; processedRows: number; totalRows: number; processedImages: number; totalImages: number; currentLabel: string; message: string }
+  | { type: 'warning'; line: number; message: string };
+
+export type ImportProgressCallback = (event: ImportProgressEvent) => void;
+
+type FailedImage = { line: number; sku: string; productName: string; url: string; reason: string };
+
 @Injectable()
 export class ProductsService {
   constructor(private prisma: PrismaService, private uploads: UploadsService) {}
@@ -389,12 +398,14 @@ export class ProductsService {
     return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
-  async importInventory(file: Express.Multer.File | undefined, body: { commit?: string }) {
+  async importInventory(file: Express.Multer.File | undefined, body: { commit?: string }, onProgress?: ImportProgressCallback) {
     if (!file) throw new BadRequestException('Debes adjuntar un archivo CSV o Excel');
     if (file.size > 5 * 1024 * 1024) throw new BadRequestException('El archivo no puede superar 5MB');
+    onProgress?.({ type: 'progress', phase: 'parsing', message: 'Leyendo el archivo...' });
     const rows = await this.parseImportFile(file);
     if (rows.length > 1000) throw new BadRequestException('Puedes importar maximo 1000 filas por archivo');
 
+    onProgress?.({ type: 'progress', phase: 'validating', message: `Validando ${rows.length} filas...` });
     const normalized = rows.map((row) => this.normalizeImportRow(row));
     const validRows = normalized.filter((row): row is NormalizedImportRow => Boolean(row));
     const errors = rows.flatMap((row) => row.errors.map((message) => ({ line: row.line, message })));
@@ -408,7 +419,11 @@ export class ProductsService {
     if (body.commit !== 'true') return { mode: 'preview', ...summary, rows: validRows.slice(0, 50) };
     if (errors.length) throw new BadRequestException({ message: 'Corrige los errores antes de importar', errors, warnings, summary: summary.summary });
 
-    const result = await this.commitImport(validRows);
+    const { result, failedImages } = await this.commitImport(validRows, onProgress);
+    for (const failure of failedImages) {
+      warnings.push({ line: failure.line, message: `Imagen no subida para "${failure.productName}" (${failure.sku}): ${failure.reason}` });
+    }
+    summary.summary.warnings = warnings.length;
     return { mode: 'commit', ...summary, result };
   }
 
@@ -764,13 +779,32 @@ export class ProductsService {
     };
   }
 
-  private async commitImport(rows: NormalizedImportRow[]) {
+  private async commitImport(rows: NormalizedImportRow[], onProgress?: ImportProgressCallback) {
     const grouped = new Map<string, NormalizedImportRow[]>();
     for (const row of rows) grouped.set(row.sku, [...(grouped.get(row.sku) ?? []), row]);
     let created = 0;
     let updated = 0;
     let variants = 0;
     let images = 0;
+    const failedImages: FailedImage[] = [];
+
+    const totalRows = grouped.size;
+    const totalImages = rows.reduce((sum, row) => sum + row.imageUrls.length + row.generalImageUrls.length, 0);
+    let processedRows = 0;
+    let processedImages = 0;
+
+    const reportImageProgress = (label: string) => {
+      onProgress?.({
+        type: 'progress',
+        phase: 'uploading',
+        processedRows,
+        totalRows,
+        processedImages,
+        totalImages,
+        currentLabel: label,
+        message: `Subiendo imagenes (${processedImages}/${totalImages}) - producto ${processedRows}/${totalRows}: ${label}`,
+      });
+    };
 
     for (const [sku, productRows] of grouped) {
       const first = productRows[0];
@@ -815,16 +849,27 @@ export class ProductsService {
       existing ? updated += 1 : created += 1;
       await this.prisma.inventory.upsert({ where: { productId: product.id }, update: { stock: stockTotal }, create: { productId: product.id, stock: stockTotal } });
 
+      const tryImportImage = async (variantId: string | undefined, url: string, alt: string, isMain: boolean) => {
+        reportImageProgress(first.name);
+        try {
+          const added = await this.createImportedImage(product.id, variantId, url, alt, isMain);
+          if (added) images += 1;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : 'error desconocido';
+          failedImages.push({ line: first.line, sku, productName: first.name, url, reason });
+        } finally {
+          processedImages += 1;
+        }
+      };
+
       for (const url of first.generalImageUrls) {
-        const added = await this.createImportedImage(product.id, undefined, url, first.name, product.images.length === 0);
-        if (added) images += 1;
+        await tryImportImage(undefined, url, first.name, product.images.length === 0);
       }
 
       for (const [index, row] of productRows.entries()) {
         if (!row.colorName) {
           for (const url of row.imageUrls) {
-            const added = await this.createImportedImage(product.id, undefined, url, row.name, product.images.length === 0);
-            if (added) images += 1;
+            await tryImportImage(undefined, url, row.name, product.images.length === 0);
           }
           continue;
         }
@@ -834,13 +879,13 @@ export class ProductsService {
           : await this.prisma.productVariant.create({ data: { productId: product.id, sku: row.variantSku, colorName: row.colorName, colorHex: row.colorHex!, stock: row.stock, sortOrder: index }, include: { images: true } });
         variants += 1;
         for (const url of row.imageUrls) {
-          const added = await this.createImportedImage(product.id, variant.id, url, `${row.name} ${row.colorName}`, variant.images.length === 0);
-          if (added) images += 1;
+          await tryImportImage(variant.id, url, `${row.name} ${row.colorName}`, variant.images.length === 0);
         }
       }
       await this.syncProductInventory(product.id);
+      processedRows += 1;
     }
-    return { created, updated, variants, images };
+    return { result: { created, updated, variants, images, imagesFailed: failedImages.length }, failedImages };
   }
 
   private async uniqueSlug(name: string) {

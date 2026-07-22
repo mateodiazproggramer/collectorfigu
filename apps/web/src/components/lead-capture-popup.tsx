@@ -105,12 +105,12 @@ export function LeadCapturePopup() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" onClick={close}>
+    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-brand-ink/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" onClick={close}>
       <div
         className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] bg-white shadow-[0_-24px_60px_rgba(15,23,42,.25)] sm:rounded-[2rem] sm:shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <button type="button" onClick={close} aria-label="Cerrar" className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-slate-700 shadow-soft transition hover:bg-white">
+        <button type="button" onClick={close} aria-label="Cerrar" className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-brand-inkSoft shadow-soft transition hover:bg-white">
           <X size={18} />
         </button>
 
@@ -126,7 +126,7 @@ export function LeadCapturePopup() {
 
             <form onSubmit={submit} noValidate className="grid gap-3 p-6">
               {apiError ? <p className="rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{apiError}</p> : null}
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                 Correo electronico
                 <input
                   className={`input-brand ${errors.email ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : ''}`}
@@ -137,7 +137,7 @@ export function LeadCapturePopup() {
                 />
                 {errors.email ? <span className="text-xs font-bold text-red-600">{errors.email}</span> : null}
               </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                 Teléfono / WhatsApp
                 <input
                   className={`input-brand ${errors.phone ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : ''}`}
@@ -148,7 +148,7 @@ export function LeadCapturePopup() {
                 />
                 {errors.phone ? <span className="text-xs font-bold text-red-600">{errors.phone}</span> : null}
               </label>
-              <label className="mt-1 flex items-start gap-3 text-xs leading-5 text-slate-500">
+              <label className="mt-1 flex items-start gap-3 text-xs leading-5 text-brand-inkSoft">
                 <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-blue" />
                 <span>
                   Autorizo el tratamiento de mis datos para recibir ofertas y novedades de CollectorFigu, segun la{' '}
@@ -159,16 +159,16 @@ export function LeadCapturePopup() {
               <button className="btn-primary mt-2 w-full" disabled={loading}>
                 {loading ? (<><Loader2 size={18} className="mr-2 animate-spin" /> Enviando...</>) : 'Quiero mi 5% de descuento'}
               </button>
-              <button type="button" onClick={close} className="text-center text-xs font-bold text-slate-400 hover:text-slate-600">No, gracias</button>
+              <button type="button" onClick={close} className="text-center text-xs font-bold text-brand-inkSoft/70 hover:text-brand-inkSoft">No, gracias</button>
             </form>
           </>
         ) : (
           <div className="p-6 text-center">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-green/10 text-brand-green">
               <Check size={28} />
             </div>
-            <h2 className="mt-4 text-2xl font-black text-slate-950">Listo! Este es tu cupon</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Usalo en el checkout para obtener 5% de descuento. Valido por 30 dias.</p>
+            <h2 className="mt-4 text-2xl font-black text-brand-ink">Listo! Este es tu cupon</h2>
+            <p className="mt-2 text-sm leading-6 text-brand-inkSoft">Usalo en el checkout para obtener 5% de descuento. Valido por 30 dias.</p>
             <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-brand-blue/40 bg-brand-blue/5 px-4 py-3">
               <span className="font-mono text-lg font-black tracking-wide text-brand-dark">{couponCode}</span>
               <button type="button" onClick={copyCode} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2 text-xs font-black text-white transition hover:bg-blue-600">

@@ -33,17 +33,39 @@ export class UploadsService {
       return cloudinary.uploader.upload(parsed.toString(), { folder, resource_type: 'image' });
     }
 
-    const response = await fetch(parsed);
-    if (!response.ok) throw new BadRequestException(`No pudimos descargar la imagen ${url}`);
-    const contentType = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() || 'image/jpeg';
+    let response: Response;
+    try {
+      response = await fetch(parsed, { redirect: 'follow' });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'error de red';
+      throw new BadRequestException(`No pudimos descargar la imagen (${reason}): ${url}`);
+    }
+    if (!response.ok) throw new BadRequestException(`No pudimos descargar la imagen (HTTP ${response.status}): ${url}`);
     const buffer = Buffer.from(await response.arrayBuffer());
+
+    // El Content-Type que reporta el servidor remoto no siempre es confiable (algunos CDN devuelven
+    // application/octet-stream o tipos genericos), asi que el formato real se detecta leyendo los
+    // primeros bytes del archivo (firma binaria) en vez de confiar ciegamente en el header.
+    const sniffed = this.sniffImageMimeType(buffer);
+    const headerType = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase();
+    const mimetype = sniffed ?? (headerType && ['image/jpeg', 'image/png', 'image/webp'].includes(headerType) ? headerType : undefined);
+    if (!mimetype) throw new BadRequestException(`La URL no devolvio una imagen JPG, PNG o WebP valida: ${url}`);
+
     const file = {
       buffer,
-      mimetype: contentType,
+      mimetype,
       size: buffer.length,
       originalname: parsed.pathname.split('/').pop() || 'imagen.jpg',
     } as Express.Multer.File;
     return this.uploadBuffer(file, folder);
+  }
+
+  private sniffImageMimeType(buffer: Buffer): string | undefined {
+    if (buffer.length < 12) return undefined;
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+    if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+    if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
+    return undefined;
   }
 
   async delete(publicId: string) {
@@ -125,8 +147,20 @@ export class UploadsService {
     if (this.isBlockedRemoteHost(parsed.hostname)) {
       throw new BadRequestException('No se permiten imagenes desde redes privadas');
     }
+    // Muchos CDN e imgproxy (Treinta, S3, Cloudinary, etc.) sanitizan el nombre original del
+    // archivo y reemplazan puntos por guiones (ej. "foto (3).png" termina en "...-3--png", sin
+    // el punto). Por eso aqui solo rechazamos extensiones que claramente NO son imagenes; una
+    // extension ausente, ambigua o "pegada" sin punto se deja pasar y la valida el contenido real
+    // descargado (firma binaria) en uploadRemoteImage/uploadBuffer, que es la fuente de verdad.
     const extension = parsed.pathname.toLowerCase().split('.').pop();
-    if (extension && !['jpg', 'jpeg', 'png', 'webp'].includes(extension)) throw new BadRequestException('La URL debe apuntar a JPG, PNG o WebP');
+    const knownNonImageExtensions = [
+      'pdf', 'html', 'htm', 'mp4', 'mov', 'avi', 'zip', 'rar', '7z',
+      'doc', 'docx', 'xls', 'xlsx', 'txt', 'json', 'xml', 'csv',
+      'gif', 'svg', 'bmp', 'tiff', 'avif', 'heic',
+    ];
+    if (extension && extension.length <= 5 && knownNonImageExtensions.includes(extension)) {
+      throw new BadRequestException(`La URL no apunta a una imagen JPG, PNG o WebP soportada: ${value}`);
+    }
     return parsed;
   }
 

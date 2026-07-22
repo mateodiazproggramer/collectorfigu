@@ -19,10 +19,10 @@ export default async function CheckoutResultPage({ searchParams }: { searchParam
         <div className="card max-w-3xl p-8">
           <div className="inline-flex rounded-2xl bg-brand-blue/10 p-3 text-brand-blue"><CreditCard size={28} /></div>
           <h2 className="mt-5 text-2xl font-black">Pago recibido para validacion</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-500">
+          <p className="mt-3 text-sm leading-6 text-brand-inkSoft">
             Si Wompi aprueba la transaccion, el pedido cambiara automaticamente a pagado. Si queda pendiente o rechazado, el equipo podra revisarlo desde el panel administrativo.
           </p>
-          <div className="mt-6 grid gap-3 rounded-3xl bg-slate-50 p-5 text-sm font-semibold text-slate-600">
+          <div className="mt-6 grid gap-3 rounded-3xl bg-brand-paper2 p-5 text-sm font-semibold text-brand-inkSoft">
             <p><Clock size={16} className="mr-2 inline text-brand-blue" /> Referencia: {params.reference ?? 'No informada'}</p>
             <p><CheckCircle2 size={16} className="mr-2 inline text-brand-blue" /> Transaccion Wompi: {params.id ?? 'Pendiente de retorno'}</p>
           </div>

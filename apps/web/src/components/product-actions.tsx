@@ -34,7 +34,7 @@ export function ProductActions({ product }: { product: CartProduct }) {
         </button>
       </div>
       {added ? (
-        <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">
+        <div className="mt-3 rounded-2xl bg-brand-green/10 p-3 text-sm font-bold text-brand-green">
           Producto agregado. <Link href="/carrito" className="underline">Ver carrito</Link>
         </div>
       ) : null}

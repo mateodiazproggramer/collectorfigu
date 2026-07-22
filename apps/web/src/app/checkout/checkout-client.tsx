@@ -42,8 +42,8 @@ const initialForm: CheckoutForm = {
 
 function Field({ label, value, onChange, type = 'text', required = true, name, error, hint }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; name?: string; error?: string; hint?: string }) {
   return (
-    <label className="grid gap-2 text-sm font-bold text-slate-700">
-      <span>{label}{required ? null : <span className="ml-1 font-semibold text-slate-400">(opcional)</span>}</span>
+    <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
+      <span>{label}{required ? null : <span className="ml-1 font-semibold text-brand-inkSoft/70">(opcional)</span>}</span>
       <input
         id={name}
         className={`input-brand ${error ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : ''}`}
@@ -53,7 +53,7 @@ function Field({ label, value, onChange, type = 'text', required = true, name, e
         required={required}
         aria-invalid={error ? true : undefined}
       />
-      {hint ? <span className="text-xs font-semibold text-slate-400">{hint}</span> : null}
+      {hint ? <span className="text-xs font-semibold text-brand-inkSoft/70">{hint}</span> : null}
       {error ? <span className="text-xs font-bold text-red-600">{error}</span> : null}
     </label>
   );
@@ -233,7 +233,7 @@ export function CheckoutClient() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black">{createdOrder ? 'Pedido generado' : 'Datos de entrega'}</h2>
-              <p className="mt-2 text-sm text-slate-500">{createdOrder ? 'Resumen del pedido y siguientes pasos enviados tambien al correo registrado.' : 'Usaremos estos datos para crear el pedido, prefacturar y coordinar entrega.'}</p>
+              <p className="mt-2 text-sm text-brand-inkSoft">{createdOrder ? 'Resumen del pedido y siguientes pasos enviados tambien al correo registrado.' : 'Usaremos estos datos para crear el pedido, prefacturar y coordinar entrega.'}</p>
             </div>
             <LockKeyhole className="text-brand-blue" size={28} />
           </div>
@@ -241,19 +241,19 @@ export function CheckoutClient() {
           {error ? <p className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p> : null}
           {!error && Object.keys(errors).length > 0 ? <p className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">Revisa los campos marcados en rojo antes de continuar.</p> : null}
           {createdOrder ? (
-            <div className="mt-6 rounded-[2rem] border border-emerald-200 bg-emerald-50 p-6 text-emerald-900">
+            <div className="mt-6 rounded-[2rem] border border-brand-green/30 bg-brand-green/10 p-6 text-brand-green">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="badge-brand bg-white text-emerald-700">Pedido creado</p>
+                  <p className="badge-brand bg-white text-brand-green">Pedido creado</p>
                   <h3 className="mt-3 text-2xl font-black">{createdOrder.orderNumber}</h3>
                   <p className="mt-2 text-sm font-semibold">Enviamos el resumen a {form.email}. La aprobacion del pago se confirma por Wompi y cada cambio de estado se notificara al cliente.</p>
                 </div>
-                <MailCheck size={36} className="text-emerald-600" />
+                <MailCheck size={36} className="text-brand-green" />
               </div>
               <div className="mt-5 grid gap-3 text-sm md:grid-cols-3">
-                <div className="rounded-2xl bg-white p-4"><span className="text-emerald-700/70">Estado</span><strong className="mt-1 block">{orderStatusLabel(createdOrder.status)}</strong></div>
-                <div className="rounded-2xl bg-white p-4"><span className="text-emerald-700/70">Metodo</span><strong className="mt-1 block">{paymentMethodLabel(createdOrder.paymentMethod)}</strong></div>
-                <div className="rounded-2xl bg-white p-4"><span className="text-emerald-700/70">Total</span><strong className="mt-1 block">{formatCurrency(Number(createdOrder.grandTotal ?? completedTotals.total))}</strong></div>
+                <div className="rounded-2xl bg-white p-4"><span className="text-brand-green/70">Estado</span><strong className="mt-1 block">{orderStatusLabel(createdOrder.status)}</strong></div>
+                <div className="rounded-2xl bg-white p-4"><span className="text-brand-green/70">Metodo</span><strong className="mt-1 block">{paymentMethodLabel(createdOrder.paymentMethod)}</strong></div>
+                <div className="rounded-2xl bg-white p-4"><span className="text-brand-green/70">Total</span><strong className="mt-1 block">{formatCurrency(Number(createdOrder.grandTotal ?? completedTotals.total))}</strong></div>
               </div>
               <div className="mt-5 rounded-2xl bg-white p-4 text-sm font-semibold leading-6">
                 <p className="font-black">Entrega</p>
@@ -266,7 +266,7 @@ export function CheckoutClient() {
                     <ExternalLink size={18} /> Ir a Wompi y pagar seguro
                   </a>
                 ) : null}
-                <Link href="/productos" className="btn-secondary">Seguir comprando</Link>
+                <Link href="/productos" className="btn-light">Seguir comprando</Link>
               </div>
             </div>
           ) : (
@@ -287,11 +287,11 @@ export function CheckoutClient() {
               {hasCuadroPersonalizado ? (
                 <div className="mt-6 rounded-[1.5rem] border border-brand-pop/25 bg-brand-pop/5 p-4">
                   <p className="inline-flex items-center gap-2 font-black text-brand-ink"><Frame size={18} className="text-brand-pop" /> Tu pedido incluye un cuadro personalizado</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Cuéntanos qué personajes quieres (nombres, franquicia y cuántos van) en el campo de abajo para armar tu pieza.</p>
+                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Cuéntanos qué personajes quieres (nombres, franquicia y cuántos van) en el campo de abajo para armar tu pieza.</p>
                 </div>
               ) : null}
 
-              <label className="mt-4 grid gap-2 text-sm font-bold text-slate-700">
+              <label className="mt-4 grid gap-2 text-sm font-bold text-brand-inkSoft">
                 {hasCuadroPersonalizado ? 'Personajes para tu cuadro y notas de entrega' : 'Notas de entrega'}
                 <textarea
                   className="input-brand min-h-28"
@@ -303,27 +303,27 @@ export function CheckoutClient() {
 
               <h2 className="mt-9 text-2xl font-black">Metodo de pago</h2>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <label className={`cursor-pointer rounded-3xl border p-5 transition ${form.paymentMethod === 'WOMPI' ? 'border-brand-blue bg-brand-blue/5 shadow-soft' : 'border-slate-200 bg-white'}`}>
+                <label className={`cursor-pointer rounded-3xl border p-5 transition ${form.paymentMethod === 'WOMPI' ? 'border-brand-blue bg-brand-blue/5 shadow-soft' : 'border-brand-line bg-white'}`}>
                   <input type="radio" name="paymentMethod" value="WOMPI" checked={form.paymentMethod === 'WOMPI'} onChange={() => update('paymentMethod', 'WOMPI')} className="sr-only" />
                   <div className="flex items-start justify-between gap-3">
                     <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-blue text-white shadow-soft">
                       <CreditCard size={24} />
                     </div>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Recomendado</span>
+                    <span className="rounded-full bg-brand-green/10 px-3 py-1 text-xs font-black text-brand-green">Recomendado</span>
                   </div>
                   <p className="mt-4 text-lg font-black">Pago seguro con Wompi</p>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">Te llevaremos a Wompi para completar el pago con los medios habilitados en la pasarela.</p>
+                  <p className="mt-2 text-xs leading-5 text-brand-inkSoft">Te llevaremos a Wompi para completar el pago con los medios habilitados en la pasarela.</p>
                   <WompiPaymentArt className="mt-4" />
                 </label>
-                <label className={`cursor-pointer rounded-3xl border p-5 transition ${form.paymentMethod === 'CASH_ON_DELIVERY' ? 'border-emerald-500 bg-emerald-50 shadow-soft' : 'border-slate-200 bg-white'}`}>
+                <label className={`cursor-pointer rounded-3xl border p-5 transition ${form.paymentMethod === 'CASH_ON_DELIVERY' ? 'border-brand-green bg-brand-green/10 shadow-soft' : 'border-brand-line bg-white'}`}>
                   <input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" checked={form.paymentMethod === 'CASH_ON_DELIVERY'} onChange={() => update('paymentMethod', 'CASH_ON_DELIVERY')} className="sr-only" />
-                  <Truck className="text-emerald-600" size={28} />
+                  <Truck className="text-brand-green" size={28} />
                   <p className="mt-4 font-black">Pago contraentrega</p>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">Pedido sujeto a cobertura, llamada/WhatsApp de confirmacion y validacion de disponibilidad antes de despacho.</p>
+                  <p className="mt-2 text-xs leading-5 text-brand-inkSoft">Pedido sujeto a cobertura, llamada/WhatsApp de confirmacion y validacion de disponibilidad antes de despacho.</p>
                 </label>
               </div>
 
-              <div className="mt-6 rounded-[2rem] border border-brand-blue/20 bg-brand-blue/5 p-5 text-sm font-semibold text-slate-600">
+              <div className="mt-6 rounded-[2rem] border border-brand-blue/20 bg-brand-blue/5 p-5 text-sm font-semibold text-brand-inkSoft">
                 <ShieldCheck size={18} className="mr-2 inline text-brand-blue" /> En Wompi no almacenamos datos sensibles de tarjetas. Si el pago es con tarjeta, la seleccion de cuotas se gestiona dentro de la pasarela cuando aplique.
               </div>
               <button className="btn-primary mt-8" disabled={!canSubmit}>{loading ? 'Creando pedido...' : form.paymentMethod === 'WOMPI' ? 'Continuar a pago seguro' : 'Crear pedido contraentrega'}</button>
@@ -356,8 +356,8 @@ export function CheckoutClient() {
             <div className="mt-6 border-t border-white/10 pt-5">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-white/50">Cupon de descuento</p>
               {appliedCoupon ? (
-                <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3">
-                  <span className="inline-flex items-center gap-2 text-sm font-black text-emerald-300">
+                <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-brand-green/30 bg-brand-green/10 px-4 py-3">
+                  <span className="inline-flex items-center gap-2 text-sm font-black text-brand-green">
                     <BadgeCheck size={16} /> {appliedCoupon.code}
                   </span>
                   <button type="button" onClick={removeCoupon} className="text-xs font-bold text-white/60 hover:text-white">Quitar</button>
@@ -383,7 +383,7 @@ export function CheckoutClient() {
           <div className="mt-6 grid gap-3 border-t border-white/10 pt-5 text-sm">
             <div className="flex justify-between"><span className="text-white/60">Subtotal</span><strong>{formatCurrency(createdOrder ? completedTotals.subtotal : subtotal)}</strong></div>
             {(createdOrder ? completedTotals.discount : discount) > 0 ? (
-              <div className="flex justify-between text-emerald-300"><span>Descuento</span><strong>-{formatCurrency(createdOrder ? completedTotals.discount : discount)}</strong></div>
+              <div className="flex justify-between text-brand-green"><span>Descuento</span><strong>-{formatCurrency(createdOrder ? completedTotals.discount : discount)}</strong></div>
             ) : null}
             <div className="flex justify-between"><span className="text-white/60">Envio</span><strong>{(createdOrder ? completedTotals.shipping : shipping) === 0 ? 'Gratis' : formatCurrency(createdOrder ? completedTotals.shipping : shipping)}</strong></div>
             <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong className="font-mono">{formatCurrency(createdOrder ? completedTotals.total : total)}</strong></div>

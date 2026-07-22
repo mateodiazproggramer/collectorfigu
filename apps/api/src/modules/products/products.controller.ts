@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { RoleName } from '@prisma/client';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -47,8 +48,26 @@ export class ProductsController {
   @Roles(RoleName.ADMIN)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
   @Post('admin/import')
-  importInventory(@UploadedFile() file: Express.Multer.File | undefined, @Body() body: { commit?: string }) {
-    return this.products.importInventory(file, body);
+  async importInventory(@UploadedFile() file: Express.Multer.File | undefined, @Body() body: { commit?: string }, @Res() res: Response) {
+    // Respuesta en streaming (NDJSON: una linea = un evento JSON) para que el panel admin pueda
+    // mostrar el progreso real de la importacion masiva (filas validadas, imagenes subidas una a
+    // una) en vez de quedar "congelado" mientras el backend procesa un archivo con cientos de filas.
+    res.status(200);
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('X-Accel-Buffering', 'no');
+    const send = (event: Record<string, unknown>) => res.write(`${JSON.stringify(event)}\n`);
+
+    try {
+      const payload = await this.products.importInventory(file, body, (event) => send(event));
+      send({ type: 'result', ...payload });
+    } catch (error: any) {
+      const response = typeof error?.getResponse === 'function' ? error.getResponse() : undefined;
+      const details = response && typeof response === 'object' ? response : { message: error?.message ?? 'No fue posible completar la importacion.' };
+      send({ type: 'result', mode: body.commit === 'true' ? 'commit' : 'preview', error: true, ...details });
+    } finally {
+      res.end();
+    }
   }
 
   @ApiBearerAuth()

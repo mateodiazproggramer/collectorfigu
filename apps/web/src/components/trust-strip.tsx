@@ -20,13 +20,13 @@ export function TrustStrip() {
         {trustBenefits.map((benefit) => {
           const Icon = benefit.icon;
           return (
-            <Link href="/productos" key={benefit.title} className="group flex items-start gap-3 rounded-2xl px-3 py-2 transition hover:bg-brand-blue/5">
-              <span className="rounded-2xl bg-brand-blue/10 p-2 text-brand-blue transition group-hover:bg-brand-blue group-hover:text-white">
+            <Link href="/productos" key={benefit.title} className={`group flex items-start gap-3 rounded-2xl px-3 py-2 transition ${benefit.hoverSurface}`}>
+              <span className={`rounded-2xl p-2 transition group-hover:text-white ${benefit.chipBg} ${benefit.chipText} ${benefit.chipHoverBg}`}>
                 <Icon size={20} />
               </span>
               <span>
-                <strong className="block text-sm text-slate-950">{benefit.title}</strong>
-                <span className="mt-1 block text-xs leading-5 text-slate-500">{benefit.text}</span>
+                <strong className="block text-sm text-brand-ink">{benefit.title}</strong>
+                <span className="mt-1 block text-xs leading-5 text-brand-inkSoft">{benefit.text}</span>
               </span>
             </Link>
           );

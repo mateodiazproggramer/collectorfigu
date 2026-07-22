@@ -24,7 +24,10 @@ services:
       target: deps
     container_name: collectorfigu-api
     restart: unless-stopped
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run seed && npm run start:dev"
+    # El seed de datos demo ya NO se corre automaticamente: el catalogo real se carga por
+    # importacion masiva desde el panel admin. Para re-sembrar datos demo manualmente:
+    # docker compose exec api npm run seed
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run start:dev"
     env_file: .env
     environment:
       NODE_ENV: development

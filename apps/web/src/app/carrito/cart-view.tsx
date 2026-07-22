@@ -110,7 +110,7 @@ export function CartView() {
           {items.length ? (
             <div className="flex justify-end">
               <button
-                className="text-xs font-bold text-slate-400 underline-offset-2 hover:text-red-500 hover:underline"
+                className="text-xs font-bold text-brand-inkSoft/70 underline-offset-2 hover:text-red-500 hover:underline"
                 onClick={() => { if (window.confirm('Seguro que quieres vaciar el carrito?')) clearCart(); }}
               >
                 Vaciar carrito
@@ -138,23 +138,23 @@ export function CartView() {
                   <Link href={`/productos/${item.product.slug}`} className="mt-1 block text-xl font-black hover:text-brand-blue">{item.product.name}</Link>
                   {item.variant ? (
                     <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-brand-blue">
-                      <span className="h-4 w-4 rounded-full border border-slate-200" style={{ backgroundColor: item.variant.colorHex }} /> Color {item.variant.colorName}
+                      <span className="h-4 w-4 rounded-full border border-brand-line" style={{ backgroundColor: item.variant.colorHex }} /> Color {item.variant.colorName}
                     </p>
                   ) : null}
-                  <p className="mt-2 text-sm text-slate-500">{presentationLabel(item.product)} · {piecesLabel(item.product)}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
-                    <span className="rounded-full bg-slate-100 px-3 py-1"><Truck size={13} className="mr-1 inline text-brand-blue" /> {shippingEstimate(Number(item.product.price) * item.quantity)}</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1"><BadgeCheck size={13} className="mr-1 inline text-brand-blue" /> Existencias {stock}</span>
+                  <p className="mt-2 text-sm text-brand-inkSoft">{presentationLabel(item.product)} · {piecesLabel(item.product)}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-brand-inkSoft">
+                    <span className="rounded-full bg-brand-paper2 px-3 py-1"><Truck size={13} className="mr-1 inline text-brand-blue" /> {shippingEstimate(Number(item.product.price) * item.quantity)}</span>
+                    <span className="rounded-full bg-brand-paper2 px-3 py-1"><BadgeCheck size={13} className="mr-1 inline text-brand-blue" /> Existencias {stock}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 p-2">
-                  <button className="rounded-xl bg-slate-100 p-2" onClick={() => updateCartItem(lineId, Math.max(1, item.quantity - 1))}><Minus size={15} /></button>
+                <div className="flex items-center gap-2 rounded-2xl border border-brand-line p-2">
+                  <button className="rounded-xl bg-brand-paper2 p-2" onClick={() => updateCartItem(lineId, Math.max(1, item.quantity - 1))}><Minus size={15} /></button>
                   <span className="min-w-8 px-3 text-center font-black">{item.quantity}</span>
-                  <button className="rounded-xl bg-slate-100 p-2" onClick={() => updateCartItem(lineId, Math.min(stock, item.quantity + 1))}><Plus size={15} /></button>
+                  <button className="rounded-xl bg-brand-paper2 p-2" onClick={() => updateCartItem(lineId, Math.min(stock, item.quantity + 1))}><Plus size={15} /></button>
                 </div>
                 <div className="text-right">
                   <p className="font-mono text-xl font-black">{formatCurrency(Number(item.product.price) * item.quantity)}</p>
-                  <p className="mt-1 font-mono text-xs text-slate-400">{formatCurrency(item.product.price)} c/u</p>
+                  <p className="mt-1 font-mono text-xs text-brand-inkSoft/70">{formatCurrency(item.product.price)} c/u</p>
                   <button className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-red-500" onClick={() => removeCartItem(lineId)}><Trash2 size={14} /> Eliminar</button>
                 </div>
               </article>
@@ -165,12 +165,12 @@ export function CartView() {
             <div className="card p-10 text-center">
               <ShoppingBag className="mx-auto text-brand-blue" size={42} />
               <h2 className="mt-4 text-2xl font-black">Tu carrito esta vacio</h2>
-              <p className="mt-2 text-slate-500">Agrega una figura desde el catalogo para continuar.</p>
+              <p className="mt-2 text-brand-inkSoft">Agrega una figura desde el catalogo para continuar.</p>
               <Link href="/productos" className="btn-primary mt-6">Ver catalogo</Link>
             </div>
           ) : null}
 
-          <div className="rounded-[2rem] border border-brand-blue/20 bg-brand-blue/5 p-5 text-sm font-semibold text-slate-600">
+          <div className="rounded-[2rem] border border-brand-blue/20 bg-brand-blue/5 p-5 text-sm font-semibold text-brand-inkSoft">
             <ShieldCheck size={18} className="mr-2 inline text-brand-blue" /> Tus productos se validan contra inventario antes de crear el pago.
           </div>
         </div>
@@ -178,22 +178,22 @@ export function CartView() {
         <aside className="card h-fit p-6 lg:sticky lg:top-36">
           <h2 className="text-2xl font-black">Resumen</h2>
           <div className="mt-6 grid gap-4 text-sm">
-            <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><strong>{formatCurrency(subtotal)}</strong></div>
-            <div className="flex justify-between"><span className="text-slate-500">Envio estimado</span><strong>{shipping === 0 ? 'Gratis' : formatCurrency(shipping)}</strong></div>
-            <div className="flex justify-between"><span className="text-slate-500">Impuestos</span><strong>{formatCurrency(taxes)}</strong></div>
+            <div className="flex justify-between"><span className="text-brand-inkSoft">Subtotal</span><strong>{formatCurrency(subtotal)}</strong></div>
+            <div className="flex justify-between"><span className="text-brand-inkSoft">Envio estimado</span><strong>{shipping === 0 ? 'Gratis' : formatCurrency(shipping)}</strong></div>
+            <div className="flex justify-between"><span className="text-brand-inkSoft">Impuestos</span><strong>{formatCurrency(taxes)}</strong></div>
           </div>
-          <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-xs leading-5 text-slate-500">
+          <div className="mt-6 rounded-2xl bg-brand-paper2 p-4 text-xs leading-5 text-brand-inkSoft">
             <CreditCard size={16} className="mr-2 inline text-brand-blue" /> Pago con Wompi, transferencia o contraentrega segun cobertura.
           </div>
           <WompiPaymentArt className="mt-4" />
-          <div className="mt-6 border-t border-slate-200 pt-5">
+          <div className="mt-6 border-t border-brand-line pt-5">
             <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong className="font-mono">{formatCurrency(total)}</strong></div>
             {canCheckout ? (
               <Link href="/checkout" className="btn-primary mt-5 w-full" onClick={() => trackMetaPixelCustom('CheckoutClick', cartMetaPayload(items, total))}>Finalizar compra <ArrowRight size={18} className="ml-2" /></Link>
             ) : (
-              <button className="mt-5 w-full rounded-2xl bg-slate-200 px-5 py-3 font-bold text-slate-500" disabled>Finalizar compra</button>
+              <button className="mt-5 inline-flex w-full cursor-not-allowed items-center justify-center rounded-2xl border border-dashed border-brand-inkSoft/25 bg-brand-inkSoft/5 px-5 py-3 font-bold text-brand-inkSoft/50" disabled>Finalizar compra</button>
             )}
-            <Link href="/productos" className="mt-3 inline-flex w-full justify-center text-sm font-black text-slate-500 hover:text-brand-blue">Seguir comprando</Link>
+            <Link href="/productos" className="mt-3 inline-flex w-full justify-center text-sm font-black text-brand-inkSoft hover:text-brand-blue">Seguir comprando</Link>
           </div>
         </aside>
       </section>

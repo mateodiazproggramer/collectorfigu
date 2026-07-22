@@ -83,23 +83,23 @@ export function SearchAutocomplete({ name = 'q', defaultValue = '', placeholder,
         className={inputClassName}
       />
       {open && suggestions.length ? (
-        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,.18)]">
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-brand-line bg-white shadow-[0_18px_45px_rgba(15,23,42,.18)]">
           <div className="max-h-80 overflow-y-auto">
             {suggestions.map((product) => (
               <Link
                 key={product.id}
                 href={`/productos/${product.slug}`}
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 border-b border-slate-100 p-3 text-left transition last:border-0 hover:bg-slate-50"
+                className="flex items-center gap-3 border-b border-brand-line p-3 text-left transition last:border-0 hover:bg-brand-paper2"
               >
-                <span className="grid h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                <span className="grid h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-brand-paper2">
                   {suggestionImage(product) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={suggestionImage(product)} alt={product.name} className="h-full w-full object-cover" />
                   ) : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-slate-900">{product.name}</span>
+                  <span className="block truncate text-sm font-bold text-brand-ink">{product.name}</span>
                   <span className="block font-mono text-xs font-black text-brand-blue">{formatCurrency(product.price)}</span>
                 </span>
               </Link>
@@ -108,7 +108,7 @@ export function SearchAutocomplete({ name = 'q', defaultValue = '', placeholder,
           <Link
             href={`/productos?q=${encodeURIComponent(value.trim())}&sort=price_desc`}
             onClick={() => setOpen(false)}
-            className="flex items-center justify-center gap-2 border-t border-slate-100 bg-slate-50 p-3 text-center text-sm font-black text-brand-blue transition hover:bg-slate-100"
+            className="flex items-center justify-center gap-2 border-t border-brand-line bg-brand-paper2 p-3 text-center text-sm font-black text-brand-blue transition hover:bg-brand-paper2"
           >
             Ver todos los resultados{totalMatches ? ` (${totalMatches})` : ''} <ArrowRight size={15} />
           </Link>

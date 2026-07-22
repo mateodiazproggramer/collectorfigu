@@ -42,11 +42,13 @@ export const shoppingNeeds = [
   { icon: Swords, label: 'Anime y superheroes', href: '/anime', description: 'Los fandoms mas pedidos del catalogo.' },
 ];
 
+// Cada beneficio tiene un color de marca distinto (violeta, oro, verde, coral) para que la franja
+// de confianza no se lea monocromatica. Las clases son literales para que el JIT de Tailwind las detecte.
 export const trustBenefits = [
-  { icon: Truck, title: 'Envío a toda Colombia', text: 'Domicilio, contraentrega según ciudad y opción de recogida.' },
-  { icon: CreditCard, title: 'Pagos seguros', text: 'Wompi, transferencia bancaria y pago contraentrega.' },
-  { icon: BadgeCheck, title: 'Compra protegida', text: 'Validamos existencias antes de confirmar tu pedido.' },
-  { icon: Blocks, title: 'Colecciona por franquicia', text: 'Arma el set completo con nuevas figuras cada semana.' },
+  { icon: Truck, title: 'Envío a toda Colombia', text: 'Domicilio, contraentrega según ciudad y opción de recogida.', chipBg: 'bg-brand-violet/10', chipText: 'text-brand-violet', chipHoverBg: 'group-hover:bg-brand-violet', hoverSurface: 'hover:bg-brand-violet/5' },
+  { icon: CreditCard, title: 'Pagos seguros', text: 'Wompi, transferencia bancaria y pago contraentrega.', chipBg: 'bg-brand-gold/10', chipText: 'text-brand-gold', chipHoverBg: 'group-hover:bg-brand-gold', hoverSurface: 'hover:bg-brand-gold/5' },
+  { icon: BadgeCheck, title: 'Compra protegida', text: 'Validamos existencias antes de confirmar tu pedido.', chipBg: 'bg-brand-green/10', chipText: 'text-brand-green', chipHoverBg: 'group-hover:bg-brand-green', hoverSurface: 'hover:bg-brand-green/5' },
+  { icon: Blocks, title: 'Colecciona por franquicia', text: 'Arma el set completo con nuevas figuras cada semana.', chipBg: 'bg-brand-pop/10', chipText: 'text-brand-pop', chipHoverBg: 'group-hover:bg-brand-pop', hoverSurface: 'hover:bg-brand-pop/5' },
 ];
 
 export const productHighlights = [

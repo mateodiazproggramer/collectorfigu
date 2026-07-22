@@ -12,7 +12,7 @@ html {
 }
 
 body {
-  @apply bg-brand-soft font-body text-slate-950 antialiased;
+  @apply bg-brand-soft font-body text-brand-ink antialiased;
   overflow-x: hidden;
 }
 
@@ -54,7 +54,7 @@ label {
 }
 
 .brand-gradient-text {
-  @apply bg-gradient-to-r from-brand-blue via-brand-cyan to-white bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-brand-gold to-brand-pop bg-clip-text text-transparent;
 }
 
 .brand-panel {
@@ -62,15 +62,15 @@ label {
 }
 
 .btn-primary {
-  @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-brand-cyan px-5 py-3 text-center font-bold text-brand-dark shadow-cyan transition hover:-translate-y-0.5 hover:shadow-glow active:translate-y-0;
+  @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-brand-pop px-5 py-3 text-center font-bold text-white shadow-[0_14px_30px_-12px_rgba(255,62,108,.55)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#e8305f] hover:shadow-[0_18px_38px_-12px_rgba(255,62,108,.6)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-pop/30 disabled:pointer-events-none disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none disabled:hover:translate-y-0;
 }
 
 .btn-secondary {
-  @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-center font-bold text-white backdrop-blur transition hover:border-brand-cyan/60 hover:bg-white/20;
+  @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-brand-gold/40 bg-white/10 px-5 py-3 text-center font-bold text-white backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:border-brand-gold hover:bg-white/20 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-gold/30 disabled:pointer-events-none disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-brand-gold/40 disabled:hover:bg-white/10;
 }
 
 .btn-light {
-  @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-center font-bold text-brand-dark shadow-soft transition hover:-translate-y-0.5 hover:border-brand-blue/30;
+  @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-brand-violet/25 bg-white px-5 py-3 text-center font-bold text-brand-ink shadow-soft transition duration-300 hover:-translate-y-0.5 hover:border-brand-violet/60 hover:bg-brand-violet/5 hover:shadow-[0_16px_32px_-14px_rgba(109,59,245,.35)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 disabled:pointer-events-none disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-brand-violet/25 disabled:hover:bg-white;
 }
 
 .card {
@@ -78,7 +78,7 @@ label {
 }
 
 .input-brand {
-  @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10;
+  @apply w-full rounded-2xl border border-brand-line bg-white px-4 py-3 text-sm outline-none transition placeholder:text-brand-inkSoft/70 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10;
 }
 
 .badge-brand {

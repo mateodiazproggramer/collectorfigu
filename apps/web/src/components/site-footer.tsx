@@ -45,7 +45,7 @@ export function SiteFooter() {
           <h3 className="font-black">Contacto</h3>
           <div className="mt-4 grid gap-3 text-sm text-white/60">
             <span className="inline-flex items-center gap-2"><MapPin size={15} /> Bogotá, Colombia</span>
-            <a href={salesWhatsAppUrl('Footer del sitio')} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 transition hover:text-emerald-300"><WhatsAppIcon size={15} /> WhatsApp comercial</a>
+            <a href={salesWhatsAppUrl('Footer del sitio')} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 transition hover:text-brand-green"><WhatsAppIcon size={15} /> WhatsApp comercial</a>
             <a href={`mailto:${COMPANY_CONTACT.supportEmail}`} className="inline-flex items-center gap-2 transition hover:text-brand-cyan"><Mail size={15} /> {COMPANY_CONTACT.supportEmail}</a>
             <a href={COMPANY_CONTACT.instagramUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 transition hover:text-pink-300"><Instagram size={15} /> {COMPANY_CONTACT.instagramHandle}</a>
             <a href={COMPANY_CONTACT.facebookUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 transition hover:text-blue-300"><Facebook size={15} /> {COMPANY_CONTACT.facebookLabel}</a>

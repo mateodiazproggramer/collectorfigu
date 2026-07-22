@@ -101,26 +101,26 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
       <section className="container-page grid gap-4 py-4 lg:grid-cols-[320px_1fr] lg:gap-8 lg:py-10">
         <aside className="card hidden h-fit overflow-hidden lg:sticky lg:top-28 lg:block lg:max-h-[calc(100dvh-8rem)]">
-          <div className="border-b border-slate-100 bg-slate-50 p-5">
+          <div className="border-b border-brand-line bg-brand-paper2 p-5">
             <div className="flex items-center gap-2 text-brand-dark">
               <Filter size={18} className="text-brand-blue" />
               <h2 className="font-black">Filtros</h2>
             </div>
-            <p className="mt-2 text-xs leading-5 text-slate-500">Combina busqueda, categoria, precio y memoria sin perder el contexto del listado.</p>
+            <p className="mt-2 text-xs leading-5 text-brand-inkSoft">Combina busqueda, categoria, precio y memoria sin perder el contexto del listado.</p>
           </div>
 
           <form action="/productos" className="grid gap-4 p-5 pb-0 lg:max-h-[calc(100dvh-15rem)] lg:overflow-y-auto">
             <HiddenParams params={normalizedParams} exclude={['q', 'brand', 'category', 'character', 'isLimitedEdition', 'available', 'minPrice', 'maxPrice', 'pieces', 'page']} />
 
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
+            <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
               Buscar
               <div className="relative">
-                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-inkSoft/70" />
                 <input name="q" defaultValue={normalizedParams.q ?? ''} className="input-brand pl-10" placeholder="Goku, Marvel, personaje..." />
               </div>
             </label>
 
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
+            <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
               Franquicia
               <select name="brand" defaultValue={normalizedParams.brand ?? ''} className="input-brand">
                 <option value="">Todas</option>
@@ -128,7 +128,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               </select>
             </label>
 
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
+            <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
               Línea de producto
               <select name="category" defaultValue={normalizedParams.category ?? ''} className="input-brand">
                 <option value="">Todas</option>
@@ -139,14 +139,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             </label>
 
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                 Edicion
                 <select name="isLimitedEdition" defaultValue={normalizedParams.isLimitedEdition ?? ''} className="input-brand">
                   <option value="">Todas</option>
                   <option value="true">Edicion limitada</option>
                 </select>
               </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                 Existencias
                 <select name="available" defaultValue={normalizedParams.available ?? ''} className="input-brand">
                   <option value="">Todos</option>
@@ -156,58 +156,58 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                 Precio min.
                 <input name="minPrice" type="number" min="0" defaultValue={normalizedParams.minPrice ?? ''} className="input-brand" placeholder="$" />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                 Precio max.
                 <input name="maxPrice" type="number" min="0" defaultValue={normalizedParams.maxPrice ?? ''} className="input-brand" placeholder="$" />
               </label>
             </div>
 
             <fieldset>
-              <legend className="mb-3 text-sm font-black text-slate-800">Piezas</legend>
+              <legend className="mb-3 text-sm font-black text-brand-ink">Piezas</legend>
               <div className="grid grid-cols-2 gap-2">
                 {pieceOptions.map((value) => (
-                  <label key={value} className="rounded-2xl border border-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-brand-blue/30 hover:bg-brand-blue/5">
+                  <label key={value} className="rounded-2xl border border-brand-line px-3 py-2 text-sm font-semibold text-brand-inkSoft transition hover:border-brand-blue/30 hover:bg-brand-blue/5">
                     <input type="radio" name="pieces" value={value} defaultChecked={normalizedParams.pieces === String(value)} className="mr-2 accent-brand-blue" />{value}+
                   </label>
                 ))}
               </div>
             </fieldset>
 
-            <div className="sticky bottom-0 -mx-5 mt-1 grid gap-3 border-t border-slate-100 bg-white p-5">
+            <div className="sticky bottom-0 -mx-5 mt-1 grid gap-3 border-t border-brand-line bg-white p-5">
               <button className="btn-primary w-full" type="submit"><SlidersHorizontal size={17} className="mr-2" /> Aplicar filtros</button>
-              <Link href="/productos" className="text-center text-sm font-black text-slate-500 transition hover:text-brand-blue">Limpiar filtros</Link>
+              <Link href="/productos" className="text-center text-sm font-black text-brand-inkSoft transition hover:text-brand-blue">Limpiar filtros</Link>
             </div>
           </form>
         </aside>
 
         <div>
           <details className="card mb-5 overflow-hidden lg:hidden">
-            <summary className="flex cursor-pointer list-none items-center justify-between bg-slate-50 p-4 font-black text-brand-dark marker:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between bg-brand-paper2 p-4 font-black text-brand-dark marker:hidden">
               <span className="inline-flex items-center gap-2"><Filter size={18} className="text-brand-blue" /> Filtros</span>
               <span className="text-xs font-black uppercase tracking-[0.14em] text-brand-blue">Abrir</span>
             </summary>
             <form action="/productos" className="grid gap-4 p-4">
               <HiddenParams params={normalizedParams} exclude={['q', 'brand', 'category', 'isLimitedEdition', 'available', 'minPrice', 'maxPrice', 'pieces', 'page']} />
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                 Buscar
                 <div className="relative">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-inkSoft/70" />
                   <input name="q" defaultValue={normalizedParams.q ?? ''} className="input-brand pl-10" placeholder="Personaje, franquicia, set..." />
                 </div>
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                   Franquicia
                   <select name="brand" defaultValue={normalizedParams.brand ?? ''} className="input-brand">
                     <option value="">Todas</option>
                     {brands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
                   </select>
                 </label>
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                   Línea de producto
                   <select name="category" defaultValue={normalizedParams.category ?? ''} className="input-brand">
                     <option value="">Todas</option>
@@ -218,24 +218,24 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 </label>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                   Precio min.
                   <input name="minPrice" type="number" min="0" defaultValue={normalizedParams.minPrice ?? ''} className="input-brand" placeholder="$" />
                 </label>
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                   Precio max.
                   <input name="maxPrice" type="number" min="0" defaultValue={normalizedParams.maxPrice ?? ''} className="input-brand" placeholder="$" />
                 </label>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                   Edicion
                   <select name="isLimitedEdition" defaultValue={normalizedParams.isLimitedEdition ?? ''} className="input-brand">
                     <option value="">Todas</option>
                     <option value="true">Edicion limitada</option>
                   </select>
                 </label>
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
                   Existencias
                   <select name="available" defaultValue={normalizedParams.available ?? ''} className="input-brand">
                     <option value="">Todos</option>
@@ -244,20 +244,20 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 </label>
               </div>
               <button className="btn-primary w-full" type="submit"><SlidersHorizontal size={17} className="mr-2" /> Aplicar filtros</button>
-              <Link href="/productos" className="text-center text-sm font-black text-slate-500">Limpiar filtros</Link>
+              <Link href="/productos" className="text-center text-sm font-black text-brand-inkSoft">Limpiar filtros</Link>
             </form>
           </details>
 
-          <div className="mb-4 grid min-w-0 gap-3 rounded-[1.25rem] border border-slate-200 bg-white p-3 shadow-soft sm:rounded-[2rem] sm:p-5 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="mb-4 grid min-w-0 gap-3 rounded-[1.25rem] border border-brand-line bg-white p-3 shadow-soft sm:rounded-[2rem] sm:p-5 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <p className="text-sm font-semibold text-slate-600">{products.meta?.total ?? products.items?.length ?? 0} productos encontrados</p>
+              <p className="text-sm font-semibold text-brand-inkSoft">{products.meta?.total ?? products.items?.length ?? 0} productos encontrados</p>
               <div className="mt-2 flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0">
-                {budgetRanges.slice(0, 3).map((range) => <Link key={range.label} href={range.href} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-brand-blue">{range.label}</Link>)}
+                {budgetRanges.slice(0, 3).map((range) => <Link key={range.label} href={range.href} className="rounded-full bg-brand-paper2 px-3 py-1.5 text-xs font-bold text-brand-inkSoft hover:text-brand-blue">{range.label}</Link>)}
               </div>
             </div>
             <form action="/productos" className="grid gap-2 sm:flex sm:items-end">
               <HiddenParams params={normalizedParams} exclude={['sort', 'page']} />
-              <label className="grid gap-1 text-xs font-black uppercase tracking-[0.13em] text-slate-500">
+              <label className="grid gap-1 text-xs font-black uppercase tracking-[0.13em] text-brand-inkSoft">
                 Ordenar
                 <select name="sort" defaultValue={normalizedParams.sort ?? ''} className="input-brand w-full normal-case tracking-normal sm:min-w-48">
                   <option value="">Recomendado</option>
@@ -270,13 +270,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             </form>
           </div>
 
-          <div className="mb-5 hidden min-w-0 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[2rem] lg:block">
+          <div className="mb-5 hidden min-w-0 rounded-[1.5rem] border border-brand-line bg-white p-4 shadow-soft sm:rounded-[2rem] lg:block">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-blue">Compra por franquicia</p>
-                <p className="mt-1 text-sm font-semibold text-slate-500">Filtra rapido sin perder los demas criterios.</p>
+                <p className="mt-1 text-sm font-semibold text-brand-inkSoft">Filtra rapido sin perder los demas criterios.</p>
               </div>
-              <Link href={productsHref(normalizedParams, { brand: undefined, page: undefined })} className={`self-start rounded-full border px-4 py-2 text-xs font-black transition ${normalizedParams.brand ? 'border-slate-200 bg-white text-slate-600 hover:border-brand-blue/40 hover:text-brand-blue' : 'border-brand-blue bg-brand-blue text-white'}`}>
+              <Link href={productsHref(normalizedParams, { brand: undefined, page: undefined })} className={`self-start rounded-full border px-4 py-2 text-xs font-black transition ${normalizedParams.brand ? 'border-brand-line bg-white text-brand-inkSoft hover:border-brand-blue/40 hover:text-brand-blue' : 'border-brand-blue bg-brand-blue text-white'}`}>
                 Todas
               </Link>
             </div>
@@ -284,7 +284,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               {brands.map((brand) => {
                 const active = normalizedParams.brand === brand;
                 return (
-                  <Link key={brand} href={productsHref(normalizedParams, { brand, page: undefined })} className={`max-w-full rounded-full border px-4 py-2 text-xs font-black transition ${active ? 'border-brand-blue bg-brand-blue text-white' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-brand-blue/40 hover:text-brand-blue'}`}>
+                  <Link key={brand} href={productsHref(normalizedParams, { brand, page: undefined })} className={`max-w-full rounded-full border px-4 py-2 text-xs font-black transition ${active ? 'border-brand-blue bg-brand-blue text-white' : 'border-brand-line bg-brand-paper2 text-brand-inkSoft hover:border-brand-blue/40 hover:text-brand-blue'}`}>
                     {brand}
                   </Link>
                 );
@@ -296,13 +296,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             {shoppingNeeds.slice(0, 3).map((need) => {
               const Icon = need.icon;
               return (
-                <Link href={need.href} key={need.label} className="min-w-0 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-brand-blue/30 sm:rounded-3xl">
+                <Link href={need.href} key={need.label} className="min-w-0 rounded-[1.5rem] border border-brand-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-brand-blue/30 sm:rounded-3xl">
                   <div className="flex items-center justify-between">
                     <Icon size={22} className="text-brand-blue" />
-                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.13em] text-emerald-600"><Star size={11} className="mr-1 inline" /> Top</span>
+                    <span className="rounded-full bg-brand-gold/15 px-2 py-1 text-[10px] font-black uppercase tracking-[0.13em] text-brand-gold"><Star size={11} className="mr-1 inline" /> Top</span>
                   </div>
-                  <p className="mt-4 font-black text-slate-950">{need.label}</p>
-                  <p className="mt-1 text-xs text-slate-500">{need.description}</p>
+                  <p className="mt-4 font-black text-brand-ink">{need.label}</p>
+                  <p className="mt-1 text-xs text-brand-inkSoft">{need.description}</p>
                 </Link>
               );
             })}
@@ -311,21 +311,21 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <ProductGrid products={products.items} />
           {totalPages > 1 ? (
             <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Paginacion de productos">
-              <Link href={productsHref(normalizedParams, { page: Math.max(1, currentPage - 1) })} className={`rounded-2xl border px-4 py-2 text-sm font-black ${currentPage <= 1 ? 'pointer-events-none border-slate-100 text-slate-300' : 'border-slate-200 text-slate-600 hover:border-brand-blue hover:text-brand-blue'}`}>
+              <Link href={productsHref(normalizedParams, { page: Math.max(1, currentPage - 1) })} className={`rounded-2xl border px-4 py-2 text-sm font-black ${currentPage <= 1 ? 'pointer-events-none border-brand-line text-brand-inkSoft/40' : 'border-brand-line text-brand-inkSoft hover:border-brand-blue hover:text-brand-blue'}`}>
                 Anterior
               </Link>
               {pageNumbers.map((page, index) => {
                 const previous = pageNumbers[index - 1];
                 return (
                   <span key={page} className="inline-flex items-center gap-2">
-                    {previous && page - previous > 1 ? <span className="px-1 text-sm font-black text-slate-300">...</span> : null}
-                    <Link href={productsHref(normalizedParams, { page })} className={`grid h-10 min-w-10 place-items-center rounded-2xl border px-3 text-sm font-black ${page === currentPage ? 'border-brand-blue bg-brand-blue text-white' : 'border-slate-200 text-slate-600 hover:border-brand-blue hover:text-brand-blue'}`}>
+                    {previous && page - previous > 1 ? <span className="px-1 text-sm font-black text-brand-inkSoft/40">...</span> : null}
+                    <Link href={productsHref(normalizedParams, { page })} className={`grid h-10 min-w-10 place-items-center rounded-2xl border px-3 text-sm font-black ${page === currentPage ? 'border-brand-blue bg-brand-blue text-white' : 'border-brand-line text-brand-inkSoft hover:border-brand-blue hover:text-brand-blue'}`}>
                       {page}
                     </Link>
                   </span>
                 );
               })}
-              <Link href={productsHref(normalizedParams, { page: Math.min(totalPages, currentPage + 1) })} className={`rounded-2xl border px-4 py-2 text-sm font-black ${currentPage >= totalPages ? 'pointer-events-none border-slate-100 text-slate-300' : 'border-slate-200 text-slate-600 hover:border-brand-blue hover:text-brand-blue'}`}>
+              <Link href={productsHref(normalizedParams, { page: Math.min(totalPages, currentPage + 1) })} className={`rounded-2xl border px-4 py-2 text-sm font-black ${currentPage >= totalPages ? 'pointer-events-none border-brand-line text-brand-inkSoft/40' : 'border-brand-line text-brand-inkSoft hover:border-brand-blue hover:text-brand-blue'}`}>
                 Siguiente
               </Link>
             </nav>

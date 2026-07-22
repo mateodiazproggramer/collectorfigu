@@ -12,7 +12,7 @@ import { addCartItemVariant, ProductVariant, toggleFavorite } from '@/lib/cart-s
 import { formatCurrency } from '@/lib/format';
 import { productMetaPayload, trackMetaPixel, trackMetaPixelCustom } from '@/lib/meta-pixel';
 import { cloudinaryThumb } from '@/lib/cloudinary';
-import { deliveryEstimate, piecesLabel, presentationLabel, shippingEstimate } from '@/lib/product-marketing';
+import { deliveryEstimate, LINE_COLOR_CLASSES, piecesLabel, presentationLabel, productLineColor, shippingEstimate } from '@/lib/product-marketing';
 import { salesWhatsAppUrl, specialOrderWhatsAppUrl } from '@/lib/whatsapp';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
@@ -131,7 +131,7 @@ function ProductVisual({ product, variant }: { product: any; variant?: ProductVa
   if (activeImage?.url) {
     return (
       <div className="grid gap-3">
-        <div className="relative overflow-hidden rounded-[1.7rem] border border-slate-100 bg-slate-50">
+        <div className="relative overflow-hidden rounded-[1.7rem] border border-brand-line bg-brand-paper2">
           <button
             type="button"
             className="group block aspect-square w-full cursor-zoom-in overflow-hidden"
@@ -151,22 +151,22 @@ function ProductVisual({ product, variant }: { product: any; variant?: ProductVa
                 transformOrigin: `${zoom.x}% ${zoom.y}%`,
               }}
             />
-            <span className="absolute right-3 top-3 inline-flex items-center rounded-full bg-white/95 px-3 py-2 text-xs font-black text-slate-700 shadow-soft">
+            <span className="absolute right-3 top-3 inline-flex items-center rounded-full bg-white/95 px-3 py-2 text-xs font-black text-brand-inkSoft shadow-soft">
               <Maximize2 size={14} className="mr-1" /> Zoom
             </span>
           </button>
 
           {images.length > 1 ? (
             <>
-              <button type="button" className="absolute left-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-slate-800 shadow-soft" onClick={() => go(-1)} aria-label="Imagen anterior">
+              <button type="button" className="absolute left-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-brand-ink shadow-soft" onClick={() => go(-1)} aria-label="Imagen anterior">
                 <ChevronLeft size={20} />
               </button>
-              <button type="button" className="absolute right-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-slate-800 shadow-soft" onClick={() => go(1)} aria-label="Imagen siguiente">
+              <button type="button" className="absolute right-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-brand-ink shadow-soft" onClick={() => go(1)} aria-label="Imagen siguiente">
                 <ChevronRight size={20} />
               </button>
               <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5 rounded-full bg-white/90 px-3 py-2 shadow-soft">
                 {images.map((image, index) => (
-                  <button key={image.url} type="button" className={`h-2 rounded-full transition ${index === activeIndex ? 'w-6 bg-brand-blue' : 'w-2 bg-slate-300'}`} onClick={() => setActiveIndex(index)} aria-label={`Ver imagen ${index + 1}`} />
+                  <button key={image.url} type="button" className={`h-2 rounded-full transition ${index === activeIndex ? 'w-6 bg-brand-blue' : 'w-2 bg-brand-inkSoft/30'}`} onClick={() => setActiveIndex(index)} aria-label={`Ver imagen ${index + 1}`} />
                 ))}
               </div>
             </>
@@ -176,7 +176,7 @@ function ProductVisual({ product, variant }: { product: any; variant?: ProductVa
         {images.length > 1 ? (
           <div className="grid grid-cols-5 gap-2">
             {images.map((image, index) => (
-              <button key={image.url} type="button" className={`overflow-hidden rounded-2xl border bg-white p-1 transition ${index === activeIndex ? 'border-brand-blue shadow-soft' : 'border-slate-200 hover:border-brand-blue/40'}`} onClick={() => setActiveIndex(index)}>
+              <button key={image.url} type="button" className={`overflow-hidden rounded-2xl border bg-white p-1 transition ${index === activeIndex ? 'border-brand-blue shadow-soft' : 'border-brand-line hover:border-brand-blue/40'}`} onClick={() => setActiveIndex(index)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={cloudinaryThumb(image.url, 150)} alt={image.alt ?? product.name} loading="lazy" className="aspect-square w-full rounded-xl object-cover" />
               </button>
@@ -185,19 +185,19 @@ function ProductVisual({ product, variant }: { product: any; variant?: ProductVa
         ) : null}
 
         {lightboxOpen ? (
-          <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/90 p-4" role="dialog" aria-modal="true">
-            <button type="button" className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white text-slate-900" onClick={() => setLightboxOpen(false)} aria-label="Cerrar zoom">
+          <div className="fixed inset-0 z-[80] grid place-items-center bg-brand-ink/90 p-4" role="dialog" aria-modal="true">
+            <button type="button" className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white text-brand-ink" onClick={() => setLightboxOpen(false)} aria-label="Cerrar zoom">
               <X size={22} />
             </button>
             {images.length > 1 ? (
-              <button type="button" className="absolute left-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-slate-900" onClick={() => go(-1)} aria-label="Imagen anterior">
+              <button type="button" className="absolute left-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-brand-ink" onClick={() => go(-1)} aria-label="Imagen anterior">
                 <ChevronLeft size={22} />
               </button>
             ) : null}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cloudinaryThumb(activeImage.url, 1400)} alt={activeImage.alt ?? product.name} className="max-h-[88dvh] max-w-[92vw] rounded-2xl object-contain" />
             {images.length > 1 ? (
-              <button type="button" className="absolute right-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-slate-900" onClick={() => go(1)} aria-label="Imagen siguiente">
+              <button type="button" className="absolute right-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-brand-ink" onClick={() => go(1)} aria-label="Imagen siguiente">
                 <ChevronRight size={22} />
               </button>
             ) : null}
@@ -258,7 +258,7 @@ function RatingStars({ value, onChange }: { value: number; onChange?: (value: nu
         <button
           key={star}
           type="button"
-          className={`grid h-9 w-9 place-items-center rounded-full transition ${star <= value ? 'bg-amber-400 text-white' : 'bg-slate-100 text-slate-300 hover:bg-amber-50 hover:text-amber-400'}`}
+          className={`grid h-9 w-9 place-items-center rounded-full transition ${star <= value ? 'bg-amber-400 text-white' : 'bg-brand-paper2 text-brand-inkSoft/40 hover:bg-amber-50 hover:text-amber-400'}`}
           onClick={() => onChange?.(star)}
           aria-label={`${star} estrellas`}
           disabled={!onChange}
@@ -307,46 +307,46 @@ function ProductReviews({ product, initialReviews }: { product: any; initialRevi
   }
 
   return (
-    <section className="mt-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[2rem] sm:p-6">
+    <section className="mt-6 rounded-[1.5rem] border border-brand-line bg-white p-4 shadow-card sm:rounded-[2rem] sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-black uppercase text-brand-blue">Comentarios</p>
-          <h2 className="mt-1 text-2xl font-black text-slate-950">Opiniones de coleccionistas</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Reseñas verificadas y moderadas por CollectorFigu.</p>
+          <h2 className="mt-1 text-2xl font-black text-brand-ink">Opiniones de coleccionistas</h2>
+          <p className="mt-2 text-sm leading-6 text-brand-inkSoft">Reseñas verificadas y moderadas por CollectorFigu.</p>
         </div>
-        <div className="rounded-2xl bg-slate-50 p-4 text-center">
+        <div className="rounded-2xl bg-brand-paper2 p-4 text-center">
           {summary.count ? (
             <>
-              <p className="text-3xl font-black text-slate-950">{summary.average.toFixed(1)}</p>
-              <p className="mt-1 text-xs font-black text-slate-500">{summary.count} comentario{summary.count === 1 ? '' : 's'}</p>
+              <p className="text-3xl font-black text-brand-ink">{summary.average.toFixed(1)}</p>
+              <p className="mt-1 text-xs font-black text-brand-inkSoft">{summary.count} comentario{summary.count === 1 ? '' : 's'}</p>
             </>
           ) : (
-            <p className="text-xs font-black text-slate-500">Se el primero en opinar</p>
+            <p className="text-xs font-black text-brand-inkSoft">Se el primero en opinar</p>
           )}
         </div>
       </div>
 
       <div className="mt-5 grid gap-3">
         {reviews.map((review) => (
-          <article key={review.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <article key={review.id} className="rounded-2xl border border-brand-line bg-brand-paper2 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="font-black text-slate-950">{review.name}</p>
-                <p className="text-xs font-semibold text-slate-500">{review.city ? `${review.city} · ` : ''}{new Date(review.createdAt).toLocaleDateString('es-CO')}</p>
+                <p className="font-black text-brand-ink">{review.name}</p>
+                <p className="text-xs font-semibold text-brand-inkSoft">{review.city ? `${review.city} · ` : ''}{new Date(review.createdAt).toLocaleDateString('es-CO')}</p>
               </div>
               <RatingStars value={review.rating} />
             </div>
-            {review.title ? <p className="mt-3 font-black text-slate-800">{review.title}</p> : null}
-            <p className="mt-2 text-sm leading-6 text-slate-600">{review.comment}</p>
+            {review.title ? <p className="mt-3 font-black text-brand-ink">{review.title}</p> : null}
+            <p className="mt-2 text-sm leading-6 text-brand-inkSoft">{review.comment}</p>
           </article>
         ))}
-        {!reviews.length ? <p className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">Aun no hay resenas de este producto. Cuentanos tu experiencia y ayuda a otros coleccionistas.</p> : null}
+        {!reviews.length ? <p className="rounded-2xl bg-brand-paper2 p-4 text-sm font-bold text-brand-inkSoft">Aun no hay resenas de este producto. Cuentanos tu experiencia y ayuda a otros coleccionistas.</p> : null}
       </div>
 
-      <form onSubmit={submitReview} className="mt-5 grid gap-3 border-t border-slate-100 pt-5">
+      <form onSubmit={submitReview} className="mt-5 grid gap-3 border-t border-brand-line pt-5">
         <div>
-          <p className="font-black text-slate-950">Deja tu comentario</p>
-          <p className="mt-1 text-xs font-bold text-slate-500">Se publica después de revisión para mantener la tienda limpia y útil.</p>
+          <p className="font-black text-brand-ink">Deja tu comentario</p>
+          <p className="mt-1 text-xs font-bold text-brand-inkSoft">Se publica después de revisión para mantener la tienda limpia y útil.</p>
         </div>
         <RatingStars value={rating} onChange={setRating} />
         <div className="grid gap-3 sm:grid-cols-2">
@@ -355,7 +355,7 @@ function ProductReviews({ product, initialReviews }: { product: any; initialRevi
         </div>
         <input className="input-brand" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título corto (opcional)" maxLength={100} />
         <textarea className="input-brand min-h-28 resize-y" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Cuéntanos cómo fue tu experiencia" minLength={10} maxLength={1200} required />
-        {message ? <p className={`rounded-2xl p-3 text-sm font-bold ${message.startsWith('Gracias') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{message}</p> : null}
+        {message ? <p className={`rounded-2xl p-3 text-sm font-bold ${message.startsWith('Gracias') ? 'bg-brand-green/10 text-brand-green' : 'bg-red-50 text-red-700'}`}>{message}</p> : null}
         <button className="btn-primary w-full sm:w-auto" disabled={sending}>{sending ? 'Enviando...' : 'Enviar comentario'}</button>
       </form>
     </section>
@@ -374,6 +374,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
   const stock = variantStock(product, selectedVariant);
   const discount = getDiscount(product);
   const accessories = useMemo(() => recommendedAccessories(product, accessoryCandidates), [product, accessoryCandidates]);
+  const lineColor = LINE_COLOR_CLASSES[productLineColor(product.category?.name)];
 
   useEffect(() => {
     trackMetaPixel('ViewContent', productMetaPayload(product, undefined, 1));
@@ -434,8 +435,9 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
       <section>
         <div className="flex flex-wrap items-center gap-2">
           <p className="badge-brand">{product.brand?.name}</p>
+          {product.category?.name ? <span className={`inline-flex items-center rounded-full px-3 py-1 font-mono text-xs font-bold uppercase tracking-[0.1em] ${lineColor.chipBg} ${lineColor.chipText}`}>{product.category.name}</span> : null}
           <LimitedEditionBadge isLimitedEdition={product.isLimitedEdition} size="md" />
-          {discount ? <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-black text-white">-{discount}%</span> : null}
+          {discount ? <span className="rounded-full bg-brand-pop px-3 py-1 text-xs font-black text-white shadow-[0_8px_18px_-6px_rgba(255,62,108,.55)]">-{discount}%</span> : null}
           {product.isFeatured ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-600"><Star size={13} fill="currentColor" /> Selección CollectorFigu</span> : null}
         </div>
         <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">{product.name}</h1>
@@ -444,32 +446,34 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
           <div className="mt-3 flex items-center gap-2">
             <div className="flex items-center gap-0.5 text-amber-400">
               {[1, 2, 3, 4, 5].map((star) => (
-                <Star key={star} size={16} fill={star <= Math.round(reviews.summary.average) ? 'currentColor' : 'none'} className={star <= Math.round(reviews.summary.average) ? '' : 'text-slate-200'} />
+                <Star key={star} size={16} fill={star <= Math.round(reviews.summary.average) ? 'currentColor' : 'none'} className={star <= Math.round(reviews.summary.average) ? '' : 'text-brand-inkSoft/30'} />
               ))}
             </div>
-            <span className="text-sm font-black text-slate-800">{reviews.summary.average.toFixed(1)}</span>
-            <span className="text-sm font-semibold text-slate-500">({reviews.summary.count} reseña{reviews.summary.count === 1 ? '' : 's'})</span>
+            <span className="text-sm font-black text-brand-ink">{reviews.summary.average.toFixed(1)}</span>
+            <span className="text-sm font-semibold text-brand-inkSoft">({reviews.summary.count} reseña{reviews.summary.count === 1 ? '' : 's'})</span>
           </div>
         ) : null}
-        <div className="mt-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-500">
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-brand-inkSoft">
           <span className="inline-flex items-center gap-2"><BadgeCheck size={17} className="text-brand-blue" /> Existencias: {stock} unidades</span>
-          {selectedVariant ? <span className="inline-flex items-center gap-2"><span className="h-4 w-4 rounded-full border border-slate-200" style={{ backgroundColor: selectedVariant.colorHex }} /> Color {selectedVariant.colorName}</span> : null}
-          <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:block" />
+          {selectedVariant ? <span className="inline-flex items-center gap-2"><span className="h-4 w-4 rounded-full border border-brand-line" style={{ backgroundColor: selectedVariant.colorHex }} /> Color {selectedVariant.colorName}</span> : null}
+          <span className="hidden h-1 w-1 rounded-full bg-brand-inkSoft/30 sm:block" />
           <span className="inline-flex items-center gap-2"><Blocks size={17} className="text-brand-blue" /> {presentationLabel(product)} · {piecesLabel(product)}</span>
         </div>
 
-        <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[2rem] sm:p-6">
+        <div className={`mt-5 overflow-hidden rounded-[1.5rem] border border-brand-line bg-white shadow-card sm:rounded-[2rem]`}>
+          <div className={`h-1.5 w-full ${lineColor.bar}`} />
+          <div className="p-4 sm:p-6">
           <div className="flex flex-wrap items-end gap-3">
             <p className="font-mono text-3xl font-black text-brand-dark sm:text-4xl">{formatCurrency(product.price)}</p>
-            {product.previousPrice ? <p className="pb-1 font-mono text-lg text-slate-400 line-through">{formatCurrency(product.previousPrice)}</p> : null}
+            {product.previousPrice ? <p className="pb-1 font-mono text-lg text-brand-inkSoft/70 line-through">{formatCurrency(product.previousPrice)}</p> : null}
           </div>
-          <p className="mt-2 text-sm font-bold text-emerald-700">Paga con Wompi, transferencia o contraentrega según ciudad.</p>
-          <p className="mt-1 text-xs font-bold text-slate-500">{shippingEstimate(product)}.</p>
-          <p className="mt-1 text-xs font-bold text-slate-500">{deliveryEstimate(product)}.</p>
+          <p className="mt-2 text-sm font-bold text-brand-green">Paga con Wompi, transferencia o contraentrega según ciudad.</p>
+          <p className="mt-1 text-xs font-bold text-brand-inkSoft">{shippingEstimate(product)}.</p>
+          <p className="mt-1 text-xs font-bold text-brand-inkSoft">{deliveryEstimate(product)}.</p>
 
           {variants.length ? (
             <div className="mt-5">
-              <p className="text-sm font-black text-slate-700">Color disponible</p>
+              <p className="text-sm font-black text-brand-inkSoft">Color disponible</p>
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
                 {variants.map((variant) => {
                   const isSelected = variant.id === selectedVariantId;
@@ -479,16 +483,16 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
                       key={variant.id}
                       type="button"
                       onClick={() => setSelectedVariantId(variant.id)}
-                      className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-black transition ${isSelected ? 'border-brand-blue bg-brand-blue/5 text-brand-blue shadow-soft' : 'border-slate-200 bg-white text-slate-600 hover:border-brand-blue/40'}`}
+                      className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-black transition ${isSelected ? 'border-brand-blue bg-brand-blue/5 text-brand-blue shadow-soft' : 'border-brand-line bg-white text-brand-inkSoft hover:border-brand-blue/40'}`}
                     >
-                      <span className="h-5 w-5 rounded-full border border-slate-200" style={{ backgroundColor: variant.colorHex }} />
+                      <span className="h-5 w-5 rounded-full border border-brand-line" style={{ backgroundColor: variant.colorHex }} />
                       {variant.colorName}
-                      <span className="text-xs text-slate-400">({available})</span>
+                      <span className="text-xs text-brand-inkSoft/70">({available})</span>
                     </button>
                   );
                 })}
               </div>
-              {!selectedVariant ? <p className="mt-2 text-xs font-bold text-slate-500">Selecciona un color para ver sus fotos y agregarlo al carrito.</p> : null}
+              {!selectedVariant ? <p className="mt-2 text-xs font-bold text-brand-inkSoft">Selecciona un color para ver sus fotos y agregarlo al carrito.</p> : null}
             </div>
           ) : null}
 
@@ -504,7 +508,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
             </button>
           </div>
           {added ? (
-            <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">
+            <div className="mt-3 rounded-2xl bg-brand-green/10 p-3 text-sm font-bold text-brand-green">
               Producto agregado{selectedVariant ? ` en color ${selectedVariant.colorName}` : ''}. <Link href="/carrito" className="underline">Ver carrito</Link>
             </div>
           ) : null}
@@ -516,22 +520,22 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <p className="font-black text-slate-950">Completa tu coleccion</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Seleccionados por franquicia, personaje y presentacion.</p>
+                  <p className="font-black text-brand-ink">Completa tu coleccion</p>
+                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Seleccionados por franquicia, personaje y presentacion.</p>
                 </div>
               </div>
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                 {accessories.slice(0, 3).map(({ accessory, reason }) => (
                   <button key={accessory.id} type="button" onClick={() => addAccessory(accessory)} className="grid min-w-52 grid-cols-[52px_1fr] gap-3 rounded-2xl border border-white bg-white p-2 text-left shadow-soft transition hover:border-brand-blue/30">
-                    <span className="grid h-[52px] w-[52px] place-items-center overflow-hidden rounded-xl bg-slate-100 text-brand-blue">
+                    <span className="grid h-[52px] w-[52px] place-items-center overflow-hidden rounded-xl bg-brand-paper2 text-brand-blue">
                       {productCover(accessory) ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={cloudinaryThumb(productCover(accessory), 120)} alt={accessory.name} loading="lazy" className="h-full w-full object-cover" />
                       ) : <PackagePlus size={20} />}
                     </span>
                     <span className="min-w-0">
-                      <span className="line-clamp-1 text-xs font-black text-slate-950">{accessory.name}</span>
-                      <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">{reason}</span>
+                      <span className="line-clamp-1 text-xs font-black text-brand-ink">{accessory.name}</span>
+                      <span className="mt-0.5 block text-[11px] font-semibold text-brand-inkSoft">{reason}</span>
                       <span className="mt-1 inline-flex items-center text-xs font-black text-brand-blue">{accessoryAddedIds.includes(accessory.id) ? 'Agregado' : formatCurrency(accessory.price)}</span>
                     </span>
                   </button>
@@ -547,8 +551,8 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
                   <Gift size={20} />
                 </div>
                 <div>
-                  <p className="font-black text-slate-950">No encuentras el personaje que buscas?</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Armamos pedidos especiales, sets de regalo y pedidos al por mayor por WhatsApp.</p>
+                  <p className="font-black text-brand-ink">No encuentras el personaje que buscas?</p>
+                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Armamos pedidos especiales, sets de regalo y pedidos al por mayor por WhatsApp.</p>
                 </div>
               </div>
               <a href={specialOrderWhatsAppUrl(product.name)} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-brand-blue px-4 py-3 text-sm font-black text-white transition hover:bg-brand-blueInk">
@@ -557,27 +561,28 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 text-sm font-semibold text-slate-600 sm:grid-cols-2">
-            <span className="rounded-2xl bg-slate-50 p-3"><Truck size={18} className="mr-2 inline text-brand-blue" /> {shippingEstimate(product)}</span>
-            <a href={salesWhatsAppUrl(product.name)} target="_blank" rel="noreferrer" className="rounded-2xl bg-slate-50 p-3 transition hover:bg-emerald-50 hover:text-emerald-700"><WhatsAppIcon size={18} className="mr-2 inline text-emerald-600" /> Asesoría por WhatsApp</a>
+          <div className="mt-4 grid gap-3 text-sm font-semibold text-brand-inkSoft sm:grid-cols-2">
+            <span className="rounded-2xl bg-brand-paper2 p-3"><Truck size={18} className="mr-2 inline text-brand-blue" /> {shippingEstimate(product)}</span>
+            <a href={salesWhatsAppUrl(product.name)} target="_blank" rel="noreferrer" className="rounded-2xl bg-brand-paper2 p-3 transition hover:bg-brand-green/10 hover:text-brand-green"><WhatsAppIcon size={18} className="mr-2 inline text-brand-green" /> Asesoría por WhatsApp</a>
+          </div>
           </div>
         </div>
 
         {cheaperAlternatives.length ? (
-          <section className="mt-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[2rem] sm:p-6">
+          <section className="mt-6 rounded-[1.5rem] border border-brand-line/60 bg-brand-paper2/60 p-4 sm:rounded-[2rem] sm:p-6">
             <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-green/10 text-brand-green">
                 <Wallet size={18} />
               </div>
               <div>
-                <p className="font-black text-slate-950">¿Buscas mas figuras de {product.brand?.name}?</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">Misma franquicia y presentacion, de mayor a menor precio.</p>
+                <p className="font-black text-brand-ink">¿Buscas mas figuras de {product.brand?.name}?</p>
+                <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Misma franquicia y presentacion, de mayor a menor precio.</p>
               </div>
             </div>
             <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
               {cheaperAlternatives.map((alt: any) => (
-                <Link key={alt.id} href={`/productos/${alt.slug}`} className="group grid w-36 shrink-0 gap-2 rounded-2xl border border-slate-200 p-2 transition hover:border-brand-blue/40 hover:shadow-soft sm:w-40">
-                  <div className="aspect-square overflow-hidden rounded-xl bg-slate-100">
+                <Link key={alt.id} href={`/productos/${alt.slug}`} className="group grid w-36 shrink-0 gap-2 rounded-2xl border border-brand-line p-2 transition hover:border-brand-blue/40 hover:shadow-soft sm:w-40">
+                  <div className="aspect-square overflow-hidden rounded-xl bg-brand-paper2">
                     {productCover(alt) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={cloudinaryThumb(productCover(alt), 200)} alt={alt.name} loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />
@@ -586,7 +591,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
                     )}
                   </div>
                   <div>
-                    <p className="line-clamp-2 text-xs font-black leading-tight text-slate-950">{alt.name}</p>
+                    <p className="line-clamp-2 text-xs font-black leading-tight text-brand-ink">{alt.name}</p>
                     <p className="mt-1 text-sm font-black text-brand-dark">{formatCurrency(alt.price)}</p>
                   </div>
                 </Link>
@@ -595,13 +600,13 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
           </section>
         ) : null}
 
-        <p className="mt-6 text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">{product.description}</p>
+        <p className="mt-6 text-base leading-7 text-brand-inkSoft sm:text-lg sm:leading-8">{product.description}</p>
 
-        <div className="mt-6 grid gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-soft sm:grid-cols-2 sm:rounded-[2rem] sm:p-6">
-          <span className="inline-flex items-center gap-3 font-semibold text-slate-700"><Blocks className="text-brand-blue" size={20} /> {presentationLabel(product)}</span>
-          <span className="inline-flex items-center gap-3 font-semibold text-slate-700"><PackagePlus className="text-brand-blue" size={20} /> {piecesLabel(product)}</span>
-          <span className="inline-flex items-center gap-3 font-semibold text-slate-700"><BadgeCheck className="text-brand-blue" size={20} /> Existencias: {stock} unidades</span>
-          <span className="inline-flex items-center gap-3 font-semibold text-slate-700"><ShieldCheck className="text-brand-blue" size={20} /> Compra protegida</span>
+        <div className="mt-6 grid gap-3 rounded-[1.5rem] border border-brand-line/70 bg-white p-4 sm:grid-cols-2 sm:rounded-[2rem] sm:p-6">
+          <span className="inline-flex items-center gap-3 font-semibold text-brand-inkSoft"><Blocks className="text-brand-blue" size={20} /> {presentationLabel(product)}</span>
+          <span className="inline-flex items-center gap-3 font-semibold text-brand-inkSoft"><PackagePlus className="text-brand-blue" size={20} /> {piecesLabel(product)}</span>
+          <span className="inline-flex items-center gap-3 font-semibold text-brand-inkSoft"><BadgeCheck className="text-brand-blue" size={20} /> Existencias: {stock} unidades</span>
+          <span className="inline-flex items-center gap-3 font-semibold text-brand-inkSoft"><ShieldCheck className="text-brand-blue" size={20} /> Compra protegida</span>
         </div>
 
         <div className="mt-6 rounded-[1.5rem] bg-brand-dark bg-brand-radial p-4 text-white sm:rounded-[2rem] sm:p-6">
@@ -621,7 +626,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
         <ProductReviews product={product} initialReviews={reviews} />
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-12px_35px_rgba(15,23,42,.12)] backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-brand-line bg-white/95 p-3 shadow-[0_-12px_35px_rgba(15,23,42,.12)] backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-2 gap-2">
           <button className="btn-primary min-w-0 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50" onClick={buyNow} disabled={stock <= 0 || (variants.length > 0 && !selectedVariant)}>
             <CreditCard size={16} className="mr-1.5 shrink-0" /> Pedir
@@ -633,15 +638,15 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
       </div>
 
       {upsellOpen ? (
-        <div className="fixed inset-0 z-[90] flex items-end bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[90] flex items-end bg-brand-ink/55 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6" role="dialog" aria-modal="true">
           <div className="max-h-[88dvh] w-full overflow-y-auto rounded-t-[2rem] bg-white p-4 shadow-[0_-24px_60px_rgba(15,23,42,.25)] sm:max-w-2xl sm:rounded-[2rem] sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="inline-flex items-center rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-black text-brand-blue"><Sparkles size={13} className="mr-1" /> Completa tu coleccion</p>
-                <h2 className="mt-3 text-2xl font-black text-slate-950">Antes de pagar, arma tu set</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Puedes agregar figuras y llaveros compatibles ahora o pasar directo al checkout.</p>
+                <h2 className="mt-3 text-2xl font-black text-brand-ink">Antes de pagar, arma tu set</h2>
+                <p className="mt-2 text-sm leading-6 text-brand-inkSoft">Puedes agregar figuras y llaveros compatibles ahora o pasar directo al checkout.</p>
               </div>
-              <button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700" onClick={() => setUpsellOpen(false)} aria-label="Cerrar recomendaciones">
+              <button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-paper2 text-brand-inkSoft" onClick={() => setUpsellOpen(false)} aria-label="Cerrar recomendaciones">
                 <X size={20} />
               </button>
             </div>
@@ -651,19 +656,19 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
                 const image = productCover(accessory);
                 const isAdded = accessoryAddedIds.includes(accessory.id);
                 return (
-                  <article key={accessory.id} className="grid grid-cols-[76px_1fr] gap-3 rounded-2xl border border-slate-200 p-2.5 sm:grid-cols-[88px_1fr_auto] sm:items-center sm:p-3">
-                    <div className="grid aspect-square place-items-center overflow-hidden rounded-2xl bg-slate-100 text-brand-blue">
+                  <article key={accessory.id} className="grid grid-cols-[76px_1fr] gap-3 rounded-2xl border border-brand-line p-2.5 sm:grid-cols-[88px_1fr_auto] sm:items-center sm:p-3">
+                    <div className="grid aspect-square place-items-center overflow-hidden rounded-2xl bg-brand-paper2 text-brand-blue">
                       {image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={cloudinaryThumb(image, 200)} alt={accessory.name} loading="lazy" className="h-full w-full object-cover" />
                       ) : <PackagePlus size={26} />}
                     </div>
                     <div className="min-w-0">
-                      <p className="line-clamp-2 font-black leading-tight text-slate-950">{accessory.name}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">{reason}</p>
+                      <p className="line-clamp-2 font-black leading-tight text-brand-ink">{accessory.name}</p>
+                      <p className="mt-1 text-xs font-semibold text-brand-inkSoft">{reason}</p>
                       <p className="mt-2 text-lg font-black text-brand-dark">{formatCurrency(accessory.price)}</p>
                     </div>
-                    <button type="button" className={`col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl px-4 text-sm font-black transition sm:col-span-1 ${isAdded ? 'bg-emerald-50 text-emerald-700' : 'bg-brand-blue text-white hover:bg-brand-blueInk'}`} onClick={() => addAccessory(accessory)} disabled={isAdded}>
+                    <button type="button" className={`col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl px-4 text-sm font-black transition sm:col-span-1 ${isAdded ? 'bg-brand-green/10 text-brand-green' : 'bg-brand-blue text-white hover:bg-brand-blueInk'}`} onClick={() => addAccessory(accessory)} disabled={isAdded}>
                       {isAdded ? <Check size={17} className="mr-2" /> : <PackagePlus size={17} className="mr-2" />}
                       {isAdded ? 'Agregado' : 'Agregar'}
                     </button>
@@ -672,7 +677,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
               })}
             </div>
 
-            <div className="sticky bottom-0 -mx-4 mt-5 grid gap-2 border-t border-slate-100 bg-white p-4 sm:-mx-6 sm:grid-cols-2 sm:px-6">
+            <div className="sticky bottom-0 -mx-4 mt-5 grid gap-2 border-t border-brand-line bg-white p-4 sm:-mx-6 sm:grid-cols-2 sm:px-6">
               <button type="button" className="btn-primary w-full" onClick={continueToCheckout}>
                 Ir al pago <ArrowRight size={18} className="ml-2" />
               </button>

@@ -11,6 +11,7 @@ import {
   Edit3,
   FileText,
   Image as ImageIcon,
+  Loader2,
   LogOut,
   Mail,
   MapPin,
@@ -135,7 +136,7 @@ type ImportPreview = {
   errors: Array<{ line: number; message: string }>;
   warnings: Array<{ line: number; message: string }>;
   rows?: Array<{ line: number; sku: string; name: string; brandName: string; colorName?: string; stock: number; imageUrls: string[] }>;
-  result?: { created: number; updated: number; variants: number; images: number };
+  result?: { created: number; updated: number; variants: number; images: number; imagesFailed?: number };
 };
 
 type ProductForm = {
@@ -246,6 +247,53 @@ async function apiFormRequest<T>(path: string, token: string, body: FormData, in
   return res.json();
 }
 
+async function apiStreamFormRequest<T>(path: string, token: string, body: FormData, onEvent: (event: any) => void): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { ...authHeaders(token) },
+    body,
+    cache: 'no-store',
+  });
+  if (!res.ok || !res.body) {
+    const details = await res.json().catch(() => null);
+    const apiMessage = Array.isArray(details?.message) ? details.message.join(' ') : details?.message;
+    throw new Error(apiMessage ? `Error de la API ${res.status}: ${apiMessage}` : `Error de la API ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finalPayload: T | null = null;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line);
+      if (event.type === 'result') {
+        finalPayload = event;
+      } else {
+        onEvent(event);
+      }
+    }
+  }
+  if (buffer.trim()) {
+    const event = JSON.parse(buffer);
+    if (event.type === 'result') finalPayload = event;
+  }
+
+  if (!finalPayload) throw new Error('La importacion no devolvio un resultado. Intenta de nuevo.');
+  if ((finalPayload as any).error) {
+    const apiMessage = Array.isArray((finalPayload as any).message) ? (finalPayload as any).message.join(' ') : (finalPayload as any).message;
+    throw new Error(apiMessage ?? 'No fue posible completar la importacion.');
+  }
+  return finalPayload;
+}
+
 async function login(email: string, password: string) {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
@@ -330,7 +378,7 @@ function StatusSelect({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10"
+      className="h-10 w-full rounded-2xl border border-brand-line bg-white px-3 text-sm font-bold text-brand-inkSoft outline-none focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10"
     >
       {options.map((option) => (
         <option key={option} value={option}>
@@ -389,7 +437,7 @@ function Field({
   inputMode?: 'numeric' | 'decimal' | 'text';
 }) {
   return (
-    <label className="block text-sm font-bold text-slate-600">
+    <label className="block text-sm font-bold text-brand-inkSoft">
       {label}
       <input
         className="input-brand mt-2"
@@ -413,14 +461,14 @@ function percent(value: number, total: number) {
 function ProgressBar({ value, total, tone = 'blue' }: { value: number; total: number; tone?: 'blue' | 'emerald' | 'amber' | 'red' | 'slate' }) {
   const color = {
     blue: 'bg-brand-blue',
-    emerald: 'bg-emerald-500',
+    emerald: 'bg-brand-green',
     amber: 'bg-amber-500',
     red: 'bg-red-500',
-    slate: 'bg-slate-400',
+    slate: 'bg-brand-inkSoft/50',
   }[tone];
 
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+    <div className="h-2 overflow-hidden rounded-full bg-brand-paper2">
       <div className={`h-full rounded-full ${color}`} style={{ width: `${percent(value, total)}%` }} />
     </div>
   );
@@ -453,6 +501,15 @@ export function AdminBackoffice() {
   const [saving, setSaving] = useState(false);
   const [imageSavingId, setImageSavingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{
+    phase: 'parsing' | 'validating' | 'uploading';
+    message: string;
+    processedRows?: number;
+    totalRows?: number;
+    processedImages?: number;
+    totalImages?: number;
+  } | null>(null);
+  const [importLog, setImportLog] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -689,14 +746,26 @@ export function AdminBackoffice() {
     setImporting(true);
     setError(null);
     setNotice(null);
+    setImportProgress({ phase: 'parsing', message: 'Leyendo el archivo...' });
+    setImportLog([]);
     try {
       const body = new FormData();
       body.append('file', importFile);
       body.append('commit', String(commit));
-      const payload = await apiFormRequest<ImportPreview>('/products/admin/import', token, body);
+      const payload = await apiStreamFormRequest<ImportPreview>('/products/admin/import', token, body, (event) => {
+        if (event.type === 'progress') {
+          setImportProgress(event);
+        } else if (event.type === 'warning') {
+          setImportLog((current) => [...current.slice(-49), `Fila ${event.line || '-'}: ${event.message}`]);
+        }
+      });
       setImportPreview(payload);
       if (commit) {
-        setNotice(`Importacion completada: ${payload.result?.created ?? 0} nuevos, ${payload.result?.updated ?? 0} actualizados, ${payload.result?.images ?? 0} imagenes.`);
+        const failed = payload.result?.imagesFailed ?? 0;
+        setNotice(
+          `Importacion completada: ${payload.result?.created ?? 0} nuevos, ${payload.result?.updated ?? 0} actualizados, ${payload.result?.images ?? 0} imagenes.` +
+            (failed ? ` ${failed} imagen(es) no se pudieron subir, revisa las advertencias.` : ''),
+        );
         setImportFile(null);
         await loadBackoffice(token);
       }
@@ -704,6 +773,7 @@ export function AdminBackoffice() {
       setError(err instanceof Error ? err.message : 'No fue posible importar el inventario.');
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   }
 
@@ -1034,7 +1104,7 @@ export function AdminBackoffice() {
 
       <section className="container-page py-8">
         {error ? <p className="mb-5 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p> : null}
-        {notice ? <p className="mb-5 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{notice}</p> : null}
+        {notice ? <p className="mb-5 rounded-2xl bg-brand-green/10 p-4 text-sm font-bold text-brand-green">{notice}</p> : null}
 
         <div className="mb-6 flex flex-wrap gap-2 rounded-3xl bg-white p-2 shadow-soft">
           {[
@@ -1048,7 +1118,7 @@ export function AdminBackoffice() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab as Tab)}
-              className={`rounded-2xl px-4 py-3 text-sm font-black transition ${activeTab === tab ? 'bg-brand-dark text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+              className={`rounded-2xl px-4 py-3 text-sm font-black transition ${activeTab === tab ? 'bg-brand-dark text-white' : 'text-brand-inkSoft hover:bg-brand-paper2'}`}
             >
               {label}
             </button>
@@ -1068,9 +1138,9 @@ export function AdminBackoffice() {
                         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-700">por revisar</span>
                       ) : null}
                     </div>
-                    <p className="mt-4 text-sm font-semibold text-slate-500">{card.title}</p>
+                    <p className="mt-4 text-sm font-semibold text-brand-inkSoft">{card.title}</p>
                     <p className="mt-2 text-2xl font-black">{card.value}</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-400">{card.helper}</p>
+                    <p className="mt-1 text-xs font-semibold text-brand-inkSoft/70">{card.helper}</p>
                   </article>
                 );
               })}
@@ -1112,7 +1182,7 @@ export function AdminBackoffice() {
                     <p className="text-sm font-black uppercase text-brand-blue">Alertas</p>
                     <h2 className="mt-1 text-2xl font-black">Prioridad</h2>
                   </div>
-                  <AlertTriangle className={dashboardData.lowStockProducts.length || dashboardData.paymentPending.length ? 'text-amber-500' : 'text-emerald-500'} size={26} />
+                  <AlertTriangle className={dashboardData.lowStockProducts.length || dashboardData.paymentPending.length ? 'text-amber-500' : 'text-brand-green'} size={26} />
                 </div>
                 <div className="mt-5 grid gap-3">
                   <button className="rounded-2xl bg-amber-50 p-4 text-left" onClick={() => setActiveTab('orders')}>
@@ -1138,16 +1208,16 @@ export function AdminBackoffice() {
                 </div>
                 <div className="mt-5 grid gap-3">
                   {dashboardData.recentOrders.map((order) => (
-                    <div key={order.id} className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 md:grid-cols-[1fr_auto] md:items-center">
+                    <div key={order.id} className="grid gap-3 rounded-2xl border border-brand-line bg-white p-4 md:grid-cols-[1fr_auto] md:items-center">
                       <div>
-                        <p className="text-sm font-black text-slate-900">{order.orderNumber} · {formatCurrency(order.grandTotal)}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{order.user?.email ?? 'Cliente'} · {new Date(order.createdAt).toLocaleString('es-CO')}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-400">{labelFrom(paymentMethodLabels, order.paymentMethod ?? order.payments?.[0]?.method, 'Metodo pendiente')}</p>
+                        <p className="text-sm font-black text-brand-ink">{order.orderNumber} · {formatCurrency(order.grandTotal)}</p>
+                        <p className="mt-1 text-xs font-semibold text-brand-inkSoft">{order.user?.email ?? 'Cliente'} · {new Date(order.createdAt).toLocaleString('es-CO')}</p>
+                        <p className="mt-1 text-xs font-semibold text-brand-inkSoft/70">{labelFrom(paymentMethodLabels, order.paymentMethod ?? order.payments?.[0]?.method, 'Metodo pendiente')}</p>
                       </div>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{labelFrom(orderStatusLabels, order.status)}</span>
+                      <span className="rounded-full bg-brand-paper2 px-3 py-1 text-xs font-black text-brand-inkSoft">{labelFrom(orderStatusLabels, order.status)}</span>
                     </div>
                   ))}
-                  {!dashboardData.recentOrders.length ? <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-bold text-slate-500">Todavia no hay pedidos registrados.</p> : null}
+                  {!dashboardData.recentOrders.length ? <p className="rounded-2xl bg-brand-paper2 p-5 text-center text-sm font-bold text-brand-inkSoft">Todavia no hay pedidos registrados.</p> : null}
                 </div>
               </section>
 
@@ -1157,7 +1227,7 @@ export function AdminBackoffice() {
                 <div className="mt-5 grid gap-4">
                   {dashboardData.orderStatusCounts.map((entry) => (
                     <div key={entry.status}>
-                      <div className="mb-2 flex justify-between text-xs font-black text-slate-600">
+                      <div className="mb-2 flex justify-between text-xs font-black text-brand-inkSoft">
                         <span>{labelFrom(orderStatusLabels, entry.status)}</span>
                         <span>{entry.count}</span>
                       </div>
@@ -1179,15 +1249,15 @@ export function AdminBackoffice() {
                 </div>
                 <div className="mt-5 grid gap-3">
                   {dashboardData.lowStockProducts.map(({ product, available }) => (
-                    <div key={product.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4">
+                    <div key={product.id} className="flex items-center justify-between gap-3 rounded-2xl border border-brand-line bg-white p-4">
                       <div>
-                        <p className="font-black text-slate-900">{product.name}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-400">{product.sku} · Reservado {product.inventory?.reserved ?? 0}</p>
+                        <p className="font-black text-brand-ink">{product.name}</p>
+                        <p className="mt-1 text-xs font-semibold text-brand-inkSoft/70">{product.sku} · Reservado {product.inventory?.reserved ?? 0}</p>
                       </div>
                       <span className={`rounded-full px-3 py-1 text-xs font-black ${available <= 0 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{available} disponibles</span>
                     </div>
                   ))}
-                  {!dashboardData.lowStockProducts.length ? <p className="rounded-2xl bg-emerald-50 p-5 text-center text-sm font-bold text-emerald-700">Sin alertas de existencias bajas.</p> : null}
+                  {!dashboardData.lowStockProducts.length ? <p className="rounded-2xl bg-brand-green/10 p-5 text-center text-sm font-bold text-brand-green">Sin alertas de existencias bajas.</p> : null}
                 </div>
               </section>
 
@@ -1200,11 +1270,11 @@ export function AdminBackoffice() {
                   <button className="btn-light" onClick={() => setActiveTab('reviews')}>Ver comentarios</button>
                 </div>
                 <div className="mt-5 grid gap-3">
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4">
-                    <p className="font-black text-slate-900">{pendingReviewCount} comentarios pendientes</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">Aprueba o rechaza reseñas de clientes antes de publicarlas.</p>
+                  <div className="rounded-2xl border border-brand-line bg-white p-4">
+                    <p className="font-black text-brand-ink">{pendingReviewCount} comentarios pendientes</p>
+                    <p className="mt-1 text-xs font-semibold text-brand-inkSoft">Aprueba o rechaza reseñas de clientes antes de publicarlas.</p>
                   </div>
-                  {!pendingReviewCount ? <p className="rounded-2xl bg-emerald-50 p-5 text-center text-sm font-bold text-emerald-700">Sin comentarios pendientes de moderacion.</p> : null}
+                  {!pendingReviewCount ? <p className="rounded-2xl bg-brand-green/10 p-5 text-center text-sm font-bold text-brand-green">Sin comentarios pendientes de moderacion.</p> : null}
                 </div>
               </section>
             </div>
@@ -1218,7 +1288,7 @@ export function AdminBackoffice() {
                 <div className="rounded-2xl bg-brand-blue/10 p-3 text-brand-blue"><Settings size={22} /></div>
                 <div>
                   <h2 className="text-2xl font-black">Marcas</h2>
-                  <p className="mt-1 text-sm text-slate-500">Estas marcas alimentan filtros, formularios de inventario y tarjetas de producto.</p>
+                  <p className="mt-1 text-sm text-brand-inkSoft">Estas marcas alimentan filtros, formularios de inventario y tarjetas de producto.</p>
                 </div>
               </div>
               <div className="mt-5 flex gap-2">
@@ -1227,13 +1297,13 @@ export function AdminBackoffice() {
               </div>
               <div className="mt-5 grid gap-3">
                 {brands.map((brand) => (
-                  <div key={brand.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                  <div key={brand.id} className="flex items-center justify-between gap-3 rounded-2xl border border-brand-line bg-white p-4">
                     <div>
                       <p className="font-black">{brand.name}</p>
-                      <p className="text-xs font-semibold text-slate-400">{brand.slug}</p>
+                      <p className="text-xs font-semibold text-brand-inkSoft/70">{brand.slug}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button className="rounded-2xl border border-slate-200 p-3 text-slate-600" onClick={() => renameCatalogOption('brands', brand)}><Edit3 size={16} /></button>
+                      <button className="rounded-2xl border border-brand-line p-3 text-brand-inkSoft" onClick={() => renameCatalogOption('brands', brand)}><Edit3 size={16} /></button>
                       <button className="rounded-2xl border border-red-100 p-3 text-red-600" onClick={() => deleteCatalogOption('brands', brand)}><Trash2 size={16} /></button>
                     </div>
                   </div>
@@ -1246,7 +1316,7 @@ export function AdminBackoffice() {
                 <div className="rounded-2xl bg-brand-blue/10 p-3 text-brand-blue"><Settings size={22} /></div>
                 <div>
                   <h2 className="text-2xl font-black">Categorias</h2>
-                  <p className="mt-1 text-sm text-slate-500">Controlan agrupaciones de tienda, filtros y clasificacion de inventario.</p>
+                  <p className="mt-1 text-sm text-brand-inkSoft">Controlan agrupaciones de tienda, filtros y clasificacion de inventario.</p>
                 </div>
               </div>
               <div className="mt-5 flex gap-2">
@@ -1255,13 +1325,13 @@ export function AdminBackoffice() {
               </div>
               <div className="mt-5 grid gap-3">
                 {categories.map((category) => (
-                  <div key={category.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                  <div key={category.id} className="flex items-center justify-between gap-3 rounded-2xl border border-brand-line bg-white p-4">
                     <div>
                       <p className="font-black">{category.name}</p>
-                      <p className="text-xs font-semibold text-slate-400">{category.slug}</p>
+                      <p className="text-xs font-semibold text-brand-inkSoft/70">{category.slug}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button className="rounded-2xl border border-slate-200 p-3 text-slate-600" onClick={() => renameCatalogOption('categories', category)}><Edit3 size={16} /></button>
+                      <button className="rounded-2xl border border-brand-line p-3 text-brand-inkSoft" onClick={() => renameCatalogOption('categories', category)}><Edit3 size={16} /></button>
                       <button className="rounded-2xl border border-red-100 p-3 text-red-600" onClick={() => deleteCatalogOption('categories', category)}><Trash2 size={16} /></button>
                     </div>
                   </div>
@@ -1276,7 +1346,7 @@ export function AdminBackoffice() {
             <div className="card p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="relative max-w-xl flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-inkSoft/70" size={18} />
                   <input
                     className="input-brand pl-11"
                     value={inventorySearch}
@@ -1293,7 +1363,7 @@ export function AdminBackoffice() {
                 </select>
                 <button className="btn-primary" onClick={startCreate}><Plus size={18} /> Nuevo producto</button>
               </div>
-              <p className="mt-3 text-xs font-semibold text-slate-500">Marca hasta {MAX_FEATURED_PRODUCTS} productos para mostrarlos en la pantalla de inicio. Si no marcas ninguno, la portada usa productos recientes como respaldo.</p>
+              <p className="mt-3 text-xs font-semibold text-brand-inkSoft">Marca hasta {MAX_FEATURED_PRODUCTS} productos para mostrarlos en la pantalla de inicio. Si no marcas ninguno, la portada usa productos recientes como respaldo.</p>
             </div>
 
             <div className="card p-5">
@@ -1304,20 +1374,20 @@ export function AdminBackoffice() {
                     <div>
                       <p className="text-sm font-black uppercase text-brand-blue">Importacion masiva</p>
                       <h2 className="mt-1 text-2xl font-black">Cargar figuras, colores, stock e imagenes</h2>
-                      <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-500">
+                      <p className="mt-2 max-w-3xl text-sm font-semibold text-brand-inkSoft">
                         Usa la plantilla Excel .xlsx o un CSV exportado desde Excel/Google Sheets. Una fila representa un color/variante de la figura; las imagenes se cargan desde URLs publicas JPG, PNG o WebP.
                       </p>
                     </div>
                   </div>
-                  <div className="mt-4 grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-3">
-                    <span className="rounded-2xl bg-slate-50 p-3">SKU repetido actualiza el producto.</span>
-                    <span className="rounded-2xl bg-slate-50 p-3">color_nombre crea o actualiza variante.</span>
-                    <span className="rounded-2xl bg-slate-50 p-3">imagen_url se asocia al color.</span>
+                  <div className="mt-4 grid gap-2 text-xs font-semibold text-brand-inkSoft sm:grid-cols-3">
+                    <span className="rounded-2xl bg-brand-paper2 p-3">SKU repetido actualiza el producto.</span>
+                    <span className="rounded-2xl bg-brand-paper2 p-3">color_nombre crea o actualiza variante.</span>
+                    <span className="rounded-2xl bg-brand-paper2 p-3">imagen_url se asocia al color.</span>
                   </div>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[420px]">
                   <button className="btn-light" onClick={downloadInventoryTemplate}><Download size={17} /> Plantilla Excel</button>
-                  <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:border-brand-blue hover:text-brand-blue">
+                  <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl border border-brand-line bg-white px-4 py-3 text-sm font-black text-brand-inkSoft hover:border-brand-blue hover:text-brand-blue">
                       <FileText size={17} className="mr-2" /> {importFile ? importFile.name : 'Seleccionar .xlsx o CSV'}
                     <input
                       type="file"
@@ -1329,23 +1399,58 @@ export function AdminBackoffice() {
                       }}
                     />
                   </label>
-                  <button className="rounded-2xl bg-brand-dark px-4 py-3 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500" disabled={!importFile || importing} onClick={() => runInventoryImport(false)}>
+                  <button className="rounded-2xl bg-brand-dark px-4 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:bg-brand-inkSoft/15 disabled:text-brand-inkSoft/40" disabled={!importFile || importing} onClick={() => runInventoryImport(false)}>
                     {importing ? 'Procesando...' : 'Previsualizar'}
                   </button>
-                  <button className="btn-primary disabled:bg-slate-200 disabled:text-slate-500" disabled={!importFile || importing || !importPreview || importPreview.summary.errors > 0} onClick={() => runInventoryImport(true)}>
+                  <button className="btn-primary" disabled={!importFile || importing || !importPreview || importPreview.summary.errors > 0} onClick={() => runInventoryImport(true)}>
                     <CheckCircle2 size={17} /> Confirmar importacion
                   </button>
                 </div>
               </div>
 
+              {importing && importProgress ? (
+                <div className="mt-5 rounded-3xl border border-brand-violet/20 bg-brand-violet/5 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="inline-flex items-center gap-2 text-sm font-black text-brand-ink">
+                      <Loader2 size={16} className="animate-spin text-brand-violet" />
+                      {importProgress.phase === 'parsing' ? 'Leyendo archivo...' : importProgress.phase === 'validating' ? 'Validando filas...' : 'Subiendo imagenes...'}
+                    </p>
+                    {importProgress.phase === 'uploading' && importProgress.totalImages ? (
+                      <p className="font-mono text-xs font-bold text-brand-inkSoft">{importProgress.processedImages}/{importProgress.totalImages} imagenes · {importProgress.processedRows}/{importProgress.totalRows} productos</p>
+                    ) : null}
+                  </div>
+
+                  {importProgress.phase === 'uploading' && importProgress.totalImages ? (
+                    <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-brand-paper2">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-brand-violet to-brand-pop transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.round(((importProgress.processedImages ?? 0) / Math.max(1, importProgress.totalImages)) * 100))}%` }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-brand-paper2">
+                      <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-brand-violet to-brand-pop" />
+                    </div>
+                  )}
+
+                  <p className="mt-2 line-clamp-1 text-xs font-semibold text-brand-inkSoft">{importProgress.message}</p>
+
+                  {importLog.length ? (
+                    <div className="mt-3 max-h-32 overflow-y-auto rounded-2xl bg-white/70 p-3 font-mono text-[11px] leading-relaxed text-brand-inkSoft">
+                      {importLog.slice(-8).map((line, index) => <p key={index}>{line}</p>)}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               {importPreview ? (
                 <div className="mt-5 grid gap-4">
                   <div className="grid gap-3 md:grid-cols-5">
-                    <div className="rounded-2xl bg-slate-50 p-4"><span className="text-xs font-black text-slate-400">Filas</span><strong className="mt-1 block text-xl">{importPreview.summary.rows}</strong></div>
-                    <div className="rounded-2xl bg-slate-50 p-4"><span className="text-xs font-black text-slate-400">Productos</span><strong className="mt-1 block text-xl">{importPreview.summary.products}</strong></div>
-                    <div className="rounded-2xl bg-slate-50 p-4"><span className="text-xs font-black text-slate-400">Colores</span><strong className="mt-1 block text-xl">{importPreview.summary.variants}</strong></div>
-                    <div className="rounded-2xl bg-slate-50 p-4"><span className="text-xs font-black text-slate-400">Imagenes</span><strong className="mt-1 block text-xl">{importPreview.summary.imageCount}</strong></div>
-                    <div className={`rounded-2xl p-4 ${importPreview.summary.errors ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                    <div className="rounded-2xl bg-brand-paper2 p-4"><span className="text-xs font-black text-brand-inkSoft/70">Filas</span><strong className="mt-1 block text-xl">{importPreview.summary.rows}</strong></div>
+                    <div className="rounded-2xl bg-brand-paper2 p-4"><span className="text-xs font-black text-brand-inkSoft/70">Productos</span><strong className="mt-1 block text-xl">{importPreview.summary.products}</strong></div>
+                    <div className="rounded-2xl bg-brand-paper2 p-4"><span className="text-xs font-black text-brand-inkSoft/70">Colores</span><strong className="mt-1 block text-xl">{importPreview.summary.variants}</strong></div>
+                    <div className="rounded-2xl bg-brand-paper2 p-4"><span className="text-xs font-black text-brand-inkSoft/70">Imagenes</span><strong className="mt-1 block text-xl">{importPreview.summary.imageCount}</strong></div>
+                    <div className={`rounded-2xl p-4 ${importPreview.summary.errors ? 'bg-red-50 text-red-700' : 'bg-brand-green/10 text-brand-green'}`}>
                       <span className="text-xs font-black">Estado</span><strong className="mt-1 block text-xl">{importPreview.summary.errors ? `${importPreview.summary.errors} errores` : 'Listo'}</strong>
                     </div>
                   </div>
@@ -1369,12 +1474,12 @@ export function AdminBackoffice() {
                   ) : null}
 
                   {importPreview.rows?.length ? (
-                    <div className="overflow-hidden rounded-3xl border border-slate-100">
-                      <div className="grid grid-cols-[80px_1fr_1fr_120px_90px] bg-slate-50 px-4 py-3 text-xs font-black uppercase text-slate-400">
+                    <div className="overflow-hidden rounded-3xl border border-brand-line">
+                      <div className="grid grid-cols-[80px_1fr_1fr_120px_90px] bg-brand-paper2 px-4 py-3 text-xs font-black uppercase text-brand-inkSoft/70">
                         <span>Fila</span><span>Producto</span><span>Marca</span><span>Color</span><span>Stock</span>
                       </div>
                       {importPreview.rows.slice(0, 8).map((row) => (
-                        <div key={`${row.line}-${row.sku}`} className="grid grid-cols-[80px_1fr_1fr_120px_90px] border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">
+                        <div key={`${row.line}-${row.sku}`} className="grid grid-cols-[80px_1fr_1fr_120px_90px] border-t border-brand-line px-4 py-3 text-sm font-semibold text-brand-inkSoft">
                           <span>{row.line}</span><span>{row.sku} · {row.name}</span><span>{row.brandName}</span><span>{row.colorName ?? 'General'}</span><span>{row.stock}</span>
                         </div>
                       ))}
@@ -1385,14 +1490,14 @@ export function AdminBackoffice() {
             </div>
 
             {showForm ? (
-              <div className={editingProduct ? "fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6" : ""}>
-              <form onSubmit={saveProduct} className={editingProduct ? "mx-auto my-4 max-w-6xl rounded-[2rem] bg-white p-5 shadow-2xl ring-1 ring-slate-900/10 sm:my-8" : "card p-5"}>
+              <div className={editingProduct ? "fixed inset-0 z-50 overflow-y-auto bg-brand-ink/55 p-3 backdrop-blur-sm sm:p-6" : ""}>
+              <form onSubmit={saveProduct} className={editingProduct ? "mx-auto my-4 max-w-6xl rounded-[2rem] bg-white p-5 shadow-2xl ring-1 ring-brand-ink/10 sm:my-8" : "card p-5"}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-black uppercase text-brand-blue">{editingProduct ? 'Editar producto' : 'Nuevo producto'}</p>
                     <h2 className="mt-1 text-2xl font-black">{editingProduct ? editingProduct.name : 'Crear producto de inventario'}</h2>
                   </div>
-                  <button type="button" className="rounded-2xl border border-slate-200 p-3" onClick={closeProductForm}><X size={18} /></button>
+                  <button type="button" className="rounded-2xl border border-brand-line p-3" onClick={closeProductForm}><X size={18} /></button>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -1401,26 +1506,26 @@ export function AdminBackoffice() {
                   <Field label="Personaje" value={form.character} onChange={(value) => setForm({ ...form, character: value })} />
                   <Field label="Color" value={form.color} onChange={(value) => setForm({ ...form, color: value })} />
 
-                  <label className="block text-sm font-bold text-slate-600">
+                  <label className="block text-sm font-bold text-brand-inkSoft">
                     Franquicia
                     <select className="input-brand mt-2" value={form.brandId} onChange={(event) => setForm({ ...form, brandId: event.target.value })} required>
                       {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
                     </select>
                   </label>
-                  <label className="block text-sm font-bold text-slate-600">
+                  <label className="block text-sm font-bold text-brand-inkSoft">
                     Línea de producto (categoría)
                     <select className="input-brand mt-2" value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })} required>
                       {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                     </select>
                   </label>
                   <Field label="Presentacion (texto libre)" value={form.presentation} onChange={(value) => setForm({ ...form, presentation: value })} />
-                  <label className="block text-sm font-bold text-slate-600">
+                  <label className="block text-sm font-bold text-brand-inkSoft">
                     Estado en tienda
                     <select className="input-brand mt-2" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
                       {productStatuses.map((status) => <option key={status} value={status}>{labelFrom(productStatusLabels, status)}</option>)}
                     </select>
                   </label>
-                  <label className="flex min-h-[74px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                  <label className="flex min-h-[74px] items-center gap-3 rounded-2xl border border-brand-line bg-white px-4 py-3 text-sm font-bold text-brand-inkSoft">
                     <input type="checkbox" className="h-5 w-5 accent-brand-blue" checked={form.isFeatured} disabled={!form.isFeatured && !editingProduct?.isFeatured && featuredProductCount >= MAX_FEATURED_PRODUCTS} onChange={(event) => setForm({ ...form, isFeatured: event.target.checked })} />
                     Destacar en portada ({featuredProductCount}/{MAX_FEATURED_PRODUCTS})
                   </label>
@@ -1439,7 +1544,7 @@ export function AdminBackoffice() {
                 </div>
 
                 <div className="mt-4 grid gap-4">
-                  <label className="block text-sm font-bold text-slate-600">
+                  <label className="block text-sm font-bold text-brand-inkSoft">
                     Descripcion comercial
                     <textarea className="input-brand mt-2 min-h-28" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required />
                   </label>
@@ -1461,30 +1566,30 @@ export function AdminBackoffice() {
                 return (
                   <article key={product.id} className="card p-5">
                     <div className="grid gap-5 xl:grid-cols-[120px_minmax(240px,1fr)_minmax(0,620px)_150px] xl:items-start">
-                      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
+                      <div className="overflow-hidden rounded-3xl border border-brand-line bg-brand-paper2">
                         {mainImage ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={mainImage.url} alt={mainImage.alt ?? product.name} className="aspect-square h-full w-full object-cover" />
                         ) : (
-                          <div className="grid aspect-square place-items-center text-slate-400"><ImageIcon size={34} /></div>
+                          <div className="grid aspect-square place-items-center text-brand-inkSoft/70"><ImageIcon size={34} /></div>
                         )}
                       </div>
 
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-3 py-1 text-xs font-black ${product.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : product.status === 'DRAFT' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                          <span className={`rounded-full px-3 py-1 text-xs font-black ${product.status === 'ACTIVE' ? 'bg-brand-green/10 text-brand-green' : product.status === 'DRAFT' ? 'bg-amber-50 text-amber-700' : 'bg-brand-paper2 text-brand-inkSoft'}`}>
                             {labelFrom(productStatusLabels, product.status)}
                           </span>
                           <LimitedEditionBadge isLimitedEdition={product.isLimitedEdition} />
                           {product.isFeatured ? <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-black text-sky-700"><Star size={12} className="mr-1" /> Destacado</span> : null}
                         </div>
                         <h3 className="mt-3 text-xl font-black">{product.name}</h3>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">{product.sku} · {product.brand?.name} · {product.category?.name}</p>
-                        <p className="mt-2 text-sm text-slate-500">{product.character ?? 'Sin personaje'} · {product.presentation ?? product.category?.name} · Reservado {product.inventory?.reserved ?? 0}</p>
+                        <p className="mt-1 text-sm font-semibold text-brand-inkSoft">{product.sku} · {product.brand?.name} · {product.category?.name}</p>
+                        <p className="mt-2 text-sm text-brand-inkSoft">{product.character ?? 'Sin personaje'} · {product.presentation ?? product.category?.name} · Reservado {product.inventory?.reserved ?? 0}</p>
                       </div>
 
                       <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-                        <label className="min-w-0 text-sm font-bold text-slate-600">
+                        <label className="min-w-0 text-sm font-bold text-brand-inkSoft">
                           Categoria
                         <select
                           className="input-brand mt-2"
@@ -1497,7 +1602,7 @@ export function AdminBackoffice() {
                         </select>
                       </label>
 
-                        <label className="min-w-0 text-sm font-bold text-slate-600">
+                        <label className="min-w-0 text-sm font-bold text-brand-inkSoft">
                           Precio
                         <input
                           className="input-brand mt-2"
@@ -1510,7 +1615,7 @@ export function AdminBackoffice() {
                         />
                       </label>
 
-                        <label className="min-w-0 text-sm font-bold text-slate-600">
+                        <label className="min-w-0 text-sm font-bold text-brand-inkSoft">
                           Precio referencia
                         <input
                           className="input-brand mt-2"
@@ -1527,7 +1632,7 @@ export function AdminBackoffice() {
                         />
                       </label>
 
-                        <label className="min-w-0 text-sm font-bold text-slate-600">
+                        <label className="min-w-0 text-sm font-bold text-brand-inkSoft">
                           Existencias
                         <input
                           className="input-brand mt-2"
@@ -1538,18 +1643,18 @@ export function AdminBackoffice() {
                             if (value !== product.inventory?.stock) void quickUpdateProduct(product, { stock: value });
                           }}
                         />
-                          <span className={`mt-2 block text-xs ${available <= 0 ? 'text-red-600' : available <= 3 ? 'text-amber-600' : 'text-slate-400'}`}>Disponible: {available}</span>
+                          <span className={`mt-2 block text-xs ${available <= 0 ? 'text-red-600' : available <= 3 ? 'text-amber-600' : 'text-brand-inkSoft/70'}`}>Disponible: {available}</span>
                         </label>
                       </div>
 
                       <div className="grid min-w-0 gap-2 content-start">
                         <StatusSelect value={product.status} options={productStatuses} labels={productStatusLabels} onChange={(status) => quickUpdateProduct(product, { status })} />
-                        <button className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-45 ${product.isFeatured ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-slate-200 text-slate-600 hover:border-sky-300 hover:text-sky-700'}`} onClick={() => quickUpdateProduct(product, { isFeatured: !product.isFeatured })} disabled={!product.isFeatured && featuredProductCount >= MAX_FEATURED_PRODUCTS} title={product.isFeatured ? 'Quitar de portada' : featuredProductCount >= MAX_FEATURED_PRODUCTS ? 'Limite de destacados alcanzado' : 'Destacar en portada'}>
+                        <button className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-45 ${product.isFeatured ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-brand-line text-brand-inkSoft hover:border-sky-300 hover:text-sky-700'}`} onClick={() => quickUpdateProduct(product, { isFeatured: !product.isFeatured })} disabled={!product.isFeatured && featuredProductCount >= MAX_FEATURED_PRODUCTS} title={product.isFeatured ? 'Quitar de portada' : featuredProductCount >= MAX_FEATURED_PRODUCTS ? 'Limite de destacados alcanzado' : 'Destacar en portada'}>
                           <Star size={18} fill={product.isFeatured ? 'currentColor' : 'none'} />
                           {product.isFeatured ? 'En portada' : 'Destacar'}
                         </button>
                         <div className="grid grid-cols-2 gap-2">
-                          <button className="grid min-h-11 place-items-center rounded-2xl border border-slate-200 text-slate-600 hover:border-brand-blue hover:text-brand-blue" onClick={() => startEdit(product)} title="Editar">
+                          <button className="grid min-h-11 place-items-center rounded-2xl border border-brand-line text-brand-inkSoft hover:border-brand-blue hover:text-brand-blue" onClick={() => startEdit(product)} title="Editar">
                             <Edit3 size={18} />
                           </button>
                           <button className="grid min-h-11 place-items-center rounded-2xl border border-red-100 text-red-600 hover:bg-red-50" onClick={() => deactivateProduct(product)} title="Desactivar">
@@ -1559,15 +1664,15 @@ export function AdminBackoffice() {
                       </div>
                     </div>
 
-                    <div className="mt-5 rounded-3xl border border-slate-100 bg-white p-4">
+                    <div className="mt-5 rounded-3xl border border-brand-line bg-white p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <p className="text-sm font-black text-slate-800">Colores e inventario por color</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">Cada color puede tener stock y foto propia. El cliente vera estos botones en la ficha del producto.</p>
+                          <p className="text-sm font-black text-brand-ink">Colores e inventario por color</p>
+                          <p className="mt-1 text-xs font-semibold text-brand-inkSoft">Cada color puede tener stock y foto propia. El cliente vera estos botones en la ficha del producto.</p>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-[1fr_86px_86px_auto]">
                           <input className="input-brand h-11" placeholder="Negro, Azul, Verde..." value={variantDrafts[product.id]?.colorName ?? ''} onChange={(event) => updateVariantDraft(product.id, { colorName: event.target.value })} />
-                          <input className="h-11 w-full rounded-2xl border border-slate-200 bg-white p-1" type="color" value={variantDrafts[product.id]?.colorHex ?? '#111827'} onChange={(event) => updateVariantDraft(product.id, { colorHex: event.target.value })} title="Color visual" />
+                          <input className="h-11 w-full rounded-2xl border border-brand-line bg-white p-1" type="color" value={variantDrafts[product.id]?.colorHex ?? '#111827'} onChange={(event) => updateVariantDraft(product.id, { colorHex: event.target.value })} title="Color visual" />
                           <input className="input-brand h-11" type="number" min="0" placeholder="Stock" value={variantDrafts[product.id]?.stock ?? '0'} onChange={(event) => updateVariantDraft(product.id, { stock: event.target.value })} />
                           <button className="rounded-2xl bg-brand-dark px-4 py-2 text-sm font-black text-white" onClick={() => addProductVariant(product)}>
                             <Plus size={16} className="mr-1 inline" /> Agregar
@@ -1582,20 +1687,20 @@ export function AdminBackoffice() {
                           const variantImage = variantImages.find((image) => image.isMain) ?? variantImages[0];
                           const remainingImages = Math.max(0, 5 - variantImages.length);
                           return (
-                            <div key={variant.id} className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:grid-cols-[150px_1fr_120px_120px_190px] lg:items-center">
+                            <div key={variant.id} className="grid gap-3 rounded-3xl border border-brand-line bg-brand-paper2 p-3 lg:grid-cols-[150px_1fr_120px_120px_190px] lg:items-center">
                               <div className="grid gap-2 lg:order-2 lg:col-span-5">
-                                <div className="w-24 overflow-hidden rounded-2xl border border-slate-200 bg-white sm:w-28">
+                                <div className="w-24 overflow-hidden rounded-2xl border border-brand-line bg-white sm:w-28">
                                 {variantImage ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img src={variantImage.url} alt={`${product.name} ${variant.colorName}`} className="aspect-square w-full object-cover" />
                                 ) : (
-                                  <div className="grid aspect-square place-items-center text-slate-400"><ImageIcon size={22} /></div>
+                                  <div className="grid aspect-square place-items-center text-brand-inkSoft/70"><ImageIcon size={22} /></div>
                                 )}
                                 </div>
                                 {variantImages.length ? (
                                   <div className="flex gap-3 overflow-x-auto pb-2">
                                     {variantImages.slice(0, 5).map((image, imageIndex) => (
-                                      <div key={image.id} className={`w-44 shrink-0 overflow-hidden rounded-2xl border bg-white transition ${image.isMain ? 'border-brand-blue shadow-glow' : 'border-slate-200'}`}>
+                                      <div key={image.id} className={`w-44 shrink-0 overflow-hidden rounded-2xl border bg-white transition ${image.isMain ? 'border-brand-blue shadow-glow' : 'border-brand-line'}`}>
                                         <div className="relative">
                                           {/* eslint-disable-next-line @next/next/no-img-element */}
                                           <img src={image.url} alt={image.alt ?? variant.colorName} className="aspect-square w-full object-cover" />
@@ -1604,7 +1709,7 @@ export function AdminBackoffice() {
                                         <div className="grid gap-2 p-2 text-[10px] font-black">
                                           <button
                                             type="button"
-                                            className={`flex h-9 items-center justify-between rounded-full px-2 transition ${image.isMain ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500 hover:bg-brand-blue/10 hover:text-brand-blue'}`}
+                                            className={`flex h-9 items-center justify-between rounded-full px-2 transition ${image.isMain ? 'bg-brand-green/10 text-brand-green' : 'bg-brand-paper2 text-brand-inkSoft hover:bg-brand-blue/10 hover:text-brand-blue'}`}
                                             onClick={() => {
                                               if (!image.isMain) void setMainImage(product, image);
                                             }}
@@ -1612,15 +1717,15 @@ export function AdminBackoffice() {
                                             aria-pressed={image.isMain}
                                           >
                                             <span>Principal</span>
-                                            <span className={`relative h-5 w-9 rounded-full transition ${image.isMain ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                            <span className={`relative h-5 w-9 rounded-full transition ${image.isMain ? 'bg-brand-green' : 'bg-brand-inkSoft/30'}`}>
                                               <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${image.isMain ? 'left-4' : 'left-0.5'}`} />
                                             </span>
                                           </button>
                                           <div className="grid grid-cols-2 gap-1">
-                                          <button className="rounded-xl bg-slate-100 px-2 py-1.5 text-slate-600 disabled:text-slate-300" onClick={() => reorderProductImage(product, image, variantImages, -1)} disabled={imageIndex === 0}>Subir</button>
-                                          <button className="rounded-xl bg-slate-100 px-2 py-1.5 text-slate-600 disabled:text-slate-300" onClick={() => reorderProductImage(product, image, variantImages, 1)} disabled={imageIndex === variantImages.length - 1}>Bajar</button>
+                                          <button className="rounded-xl bg-brand-paper2 px-2 py-1.5 text-brand-inkSoft disabled:text-brand-inkSoft/40" onClick={() => reorderProductImage(product, image, variantImages, -1)} disabled={imageIndex === 0}>Subir</button>
+                                          <button className="rounded-xl bg-brand-paper2 px-2 py-1.5 text-brand-inkSoft disabled:text-brand-inkSoft/40" onClick={() => reorderProductImage(product, image, variantImages, 1)} disabled={imageIndex === variantImages.length - 1}>Bajar</button>
                                           </div>
-                                          <label className="cursor-pointer rounded-xl border border-slate-200 px-2 py-1.5 text-center text-slate-600">
+                                          <label className="cursor-pointer rounded-xl border border-brand-line px-2 py-1.5 text-center text-brand-inkSoft">
                                             Reemplazar
                                             <input
                                               type="file"
@@ -1640,29 +1745,29 @@ export function AdminBackoffice() {
                                   </div>
                                 ) : null}
                               </div>
-                              <label className="text-sm font-bold text-slate-600">
+                              <label className="text-sm font-bold text-brand-inkSoft">
                                 Nombre del color
                                 <input className="input-brand mt-2" defaultValue={variant.colorName} onBlur={(event) => {
                                   const value = event.target.value.trim();
                                   if (value && value !== variant.colorName) void updateProductVariant(product, variant, { colorName: value });
                                 }} />
                               </label>
-                              <label className="text-sm font-bold text-slate-600">
+                              <label className="text-sm font-bold text-brand-inkSoft">
                                 Muestra
-                                <input className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white p-1" type="color" defaultValue={variant.colorHex} onBlur={(event) => {
+                                <input className="mt-2 h-11 w-full rounded-2xl border border-brand-line bg-white p-1" type="color" defaultValue={variant.colorHex} onBlur={(event) => {
                                   if (event.target.value !== variant.colorHex) void updateProductVariant(product, variant, { colorHex: event.target.value });
                                 }} />
                               </label>
-                              <label className="text-sm font-bold text-slate-600">
+                              <label className="text-sm font-bold text-brand-inkSoft">
                                 Stock
                                 <input className="input-brand mt-2" type="number" min="0" defaultValue={variant.stock} onBlur={(event) => {
                                   const value = Number(event.target.value);
                                   if (value !== variant.stock) void updateProductVariant(product, variant, { stock: value });
                                 }} />
-                                <span className={`mt-2 block text-xs ${availableVariant <= 0 ? 'text-red-600' : availableVariant <= 3 ? 'text-amber-600' : 'text-slate-400'}`}>Disponible: {availableVariant} · Reservado: {variant.reserved}</span>
+                                <span className={`mt-2 block text-xs ${availableVariant <= 0 ? 'text-red-600' : availableVariant <= 3 ? 'text-amber-600' : 'text-brand-inkSoft/70'}`}>Disponible: {availableVariant} · Reservado: {variant.reserved}</span>
                               </label>
                               <div className="flex flex-wrap gap-2 lg:justify-end">
-                                <label className={`inline-flex cursor-pointer items-center rounded-2xl px-3 py-2 text-xs font-black text-white ${remainingImages > 0 ? 'bg-brand-dark' : 'bg-slate-300'}`}>
+                                <label className={`inline-flex cursor-pointer items-center rounded-2xl px-3 py-2 text-xs font-black text-white ${remainingImages > 0 ? 'bg-brand-dark' : 'bg-brand-inkSoft/30'}`}>
                                   <Upload size={14} className="mr-1" /> Fotos {variantImages.length}/5
                                   <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" disabled={imageSavingId === variant.id || remainingImages <= 0} onChange={(event) => {
                                     void uploadProductImages(product, event.target.files, true, variant.id);
@@ -1677,18 +1782,18 @@ export function AdminBackoffice() {
                           );
                         })}
                         {!product.variants?.length ? (
-                          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">
+                          <div className="rounded-3xl border border-dashed border-brand-line bg-brand-paper2 p-5 text-center text-sm font-bold text-brand-inkSoft/70">
                             Sin colores configurados. Puedes agregar Negro, Azul, Verde, etc. con stock independiente.
                           </div>
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="mt-5 rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="mt-5 rounded-3xl border border-brand-line bg-brand-paper2 p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                          <p className="text-sm font-black text-slate-800">Imagenes del producto</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">La marcada como principal es la que aparece primero en tienda.</p>
+                          <p className="text-sm font-black text-brand-ink">Imagenes del producto</p>
+                          <p className="mt-1 text-xs font-semibold text-brand-inkSoft">La marcada como principal es la que aparece primero en tienda.</p>
                         </div>
                         <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl bg-brand-dark px-4 py-3 text-sm font-black text-white">
                           <Upload size={16} className="mr-2" /> {imageSavingId === product.id ? 'Subiendo...' : 'Subir principal'}
@@ -1707,13 +1812,13 @@ export function AdminBackoffice() {
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {generalImages.map((image, imageIndex) => (
-                          <div key={image.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                          <div key={image.id} className="overflow-hidden rounded-3xl border border-brand-line bg-white">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={image.url} alt={image.alt ?? product.name} className="aspect-square w-full object-cover" />
                             <div className="grid gap-2 p-3">
                               <button
                                 type="button"
-                                className={`flex h-11 items-center justify-between rounded-full px-3 text-xs font-black transition ${image.isMain ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500 hover:bg-brand-blue/10 hover:text-brand-blue'}`}
+                                className={`flex h-11 items-center justify-between rounded-full px-3 text-xs font-black transition ${image.isMain ? 'bg-brand-green/10 text-brand-green' : 'bg-brand-paper2 text-brand-inkSoft hover:bg-brand-blue/10 hover:text-brand-blue'}`}
                                 onClick={() => {
                                   if (!image.isMain) void setMainImage(product, image);
                                 }}
@@ -1721,19 +1826,19 @@ export function AdminBackoffice() {
                                 aria-pressed={image.isMain}
                               >
                                 <span>Principal</span>
-                                <span className={`relative h-5 w-9 rounded-full transition ${image.isMain ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                <span className={`relative h-5 w-9 rounded-full transition ${image.isMain ? 'bg-brand-green' : 'bg-brand-inkSoft/30'}`}>
                                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${image.isMain ? 'left-4' : 'left-0.5'}`} />
                                 </span>
                               </button>
                               <div className="grid grid-cols-2 gap-2">
-                                <button className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 disabled:text-slate-300" onClick={() => reorderProductImage(product, image, generalImages, -1)} disabled={imageIndex === 0 || imageSavingId === image.id}>
+                                <button className="rounded-2xl bg-brand-paper2 px-3 py-2 text-xs font-black text-brand-inkSoft disabled:text-brand-inkSoft/40" onClick={() => reorderProductImage(product, image, generalImages, -1)} disabled={imageIndex === 0 || imageSavingId === image.id}>
                                   Subir
                                 </button>
-                                <button className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 disabled:text-slate-300" onClick={() => reorderProductImage(product, image, generalImages, 1)} disabled={imageIndex === generalImages.length - 1 || imageSavingId === image.id}>
+                                <button className="rounded-2xl bg-brand-paper2 px-3 py-2 text-xs font-black text-brand-inkSoft disabled:text-brand-inkSoft/40" onClick={() => reorderProductImage(product, image, generalImages, 1)} disabled={imageIndex === generalImages.length - 1 || imageSavingId === image.id}>
                                   Bajar
                                 </button>
                               </div>
-                              <label className="cursor-pointer rounded-2xl border border-slate-200 px-3 py-2 text-center text-xs font-black text-slate-600">
+                              <label className="cursor-pointer rounded-2xl border border-brand-line px-3 py-2 text-center text-xs font-black text-brand-inkSoft">
                                 Reemplazar
                                 <input
                                   type="file"
@@ -1752,13 +1857,13 @@ export function AdminBackoffice() {
                             </div>
                           </div>
                         ))}
-                        {!generalImages.length ? <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">Sin imagenes generales</div> : null}
+                        {!generalImages.length ? <div className="rounded-3xl border border-dashed border-brand-line bg-white p-6 text-center text-sm font-bold text-brand-inkSoft/70">Sin imagenes generales</div> : null}
                       </div>
                     </div>
                   </article>
                 );
               })}
-              {!filteredProducts.length ? <div className="card p-8 text-center font-bold text-slate-500">No hay productos para mostrar.</div> : null}
+              {!filteredProducts.length ? <div className="card p-8 text-center font-bold text-brand-inkSoft">No hay productos para mostrar.</div> : null}
             </div>
           </div>
         ) : null}
@@ -1779,7 +1884,7 @@ export function AdminBackoffice() {
                 <div>
                   <p className="text-sm font-black uppercase text-brand-blue">Analitica</p>
                   <h2 className="mt-1 text-2xl font-black">Actividad de los ultimos {analytics?.days ?? 30} dias</h2>
-                  <p className="mt-2 text-sm text-slate-500">Eventos propios capturados desde la web, utiles aunque Google Analytics aun no tenga ID configurado.</p>
+                  <p className="mt-2 text-sm text-brand-inkSoft">Eventos propios capturados desde la web, utiles aunque Google Analytics aun no tenga ID configurado.</p>
                 </div>
                 <button className="btn-light" onClick={() => loadBackoffice()}>Actualizar</button>
               </div>
@@ -1788,14 +1893,14 @@ export function AdminBackoffice() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               <article className="card p-5">
                 <div className="inline-flex rounded-2xl bg-brand-blue/10 p-3 text-brand-blue"><BarChart3 size={22} /></div>
-                <p className="mt-4 text-sm font-semibold text-slate-500">Eventos totales</p>
+                <p className="mt-4 text-sm font-semibold text-brand-inkSoft">Eventos totales</p>
                 <p className="mt-2 text-2xl font-black">{analytics?.total ?? 0}</p>
               </article>
               {(analytics?.keyEvents ?? []).map((entry) => (
                 <article key={entry.event} className="card p-5">
                   <p className="text-xs font-black uppercase text-brand-blue">{entry.event}</p>
                   <p className="mt-3 text-2xl font-black">{entry.count}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-400">Evento capturado</p>
+                  <p className="mt-1 text-xs font-semibold text-brand-inkSoft/70">Evento capturado</p>
                 </article>
               ))}
             </div>
@@ -1806,12 +1911,12 @@ export function AdminBackoffice() {
                 <h2 className="mt-1 text-2xl font-black">Top productos</h2>
                 <div className="mt-5 grid gap-3">
                   {(analytics?.topProducts ?? []).map((entry) => (
-                    <div key={entry.productId ?? 'unknown'} className="rounded-2xl border border-slate-100 bg-white p-4">
-                      <p className="font-black text-slate-950">{entry.product?.name ?? 'Producto no identificado'}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-400">{entry.count} eventos</p>
+                    <div key={entry.productId ?? 'unknown'} className="rounded-2xl border border-brand-line bg-white p-4">
+                      <p className="font-black text-brand-ink">{entry.product?.name ?? 'Producto no identificado'}</p>
+                      <p className="mt-1 text-xs font-semibold text-brand-inkSoft/70">{entry.count} eventos</p>
                     </div>
                   ))}
-                  {!analytics?.topProducts?.length ? <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-bold text-slate-500">Aun no hay eventos de producto.</p> : null}
+                  {!analytics?.topProducts?.length ? <p className="rounded-2xl bg-brand-paper2 p-5 text-center text-sm font-bold text-brand-inkSoft">Aun no hay eventos de producto.</p> : null}
                 </div>
               </section>
 
@@ -1820,15 +1925,15 @@ export function AdminBackoffice() {
                 <h2 className="mt-1 text-2xl font-black">Ultima actividad</h2>
                 <div className="mt-5 grid gap-3">
                   {(analytics?.recent ?? []).map((event) => (
-                    <div key={event.id} className="grid gap-2 rounded-2xl border border-slate-100 bg-white p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div key={event.id} className="grid gap-2 rounded-2xl border border-brand-line bg-white p-4 sm:grid-cols-[1fr_auto] sm:items-center">
                       <div>
-                        <p className="font-black text-slate-950">{event.event}</p>
-                        <p className="mt-1 break-all text-xs font-semibold text-slate-500">{event.path ?? 'Sin ruta'}</p>
+                        <p className="font-black text-brand-ink">{event.event}</p>
+                        <p className="mt-1 break-all text-xs font-semibold text-brand-inkSoft">{event.path ?? 'Sin ruta'}</p>
                       </div>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">{new Date(event.createdAt).toLocaleString('es-CO')}</span>
+                      <span className="rounded-full bg-brand-paper2 px-3 py-1 text-xs font-black text-brand-inkSoft">{new Date(event.createdAt).toLocaleString('es-CO')}</span>
                     </div>
                   ))}
-                  {!analytics?.recent?.length ? <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-bold text-slate-500">Todavia no hay eventos registrados.</p> : null}
+                  {!analytics?.recent?.length ? <p className="rounded-2xl bg-brand-paper2 p-5 text-center text-sm font-bold text-brand-inkSoft">Todavia no hay eventos registrados.</p> : null}
                 </div>
               </section>
             </div>
@@ -1842,7 +1947,7 @@ export function AdminBackoffice() {
                 <div>
                   <p className="text-sm font-black uppercase text-brand-blue">Comentarios</p>
                   <h2 className="mt-1 text-2xl font-black">Resenas de producto</h2>
-                  <p className="mt-2 text-sm text-slate-500">Lo nuevo entra pendiente. Aprueba solo comentarios reales y utiles para el comprador.</p>
+                  <p className="mt-2 text-sm text-brand-inkSoft">Lo nuevo entra pendiente. Aprueba solo comentarios reales y utiles para el comprador.</p>
                 </div>
                 <span className="rounded-full bg-amber-50 px-4 py-2 text-xs font-black text-amber-700">{pendingReviewCount} pendientes</span>
               </div>
@@ -1853,16 +1958,16 @@ export function AdminBackoffice() {
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-3 py-1 text-xs font-black ${review.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : review.status === 'REJECTED' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{review.status}</span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">{review.rating}/5</span>
+                      <span className={`rounded-full px-3 py-1 text-xs font-black ${review.status === 'APPROVED' ? 'bg-brand-green/10 text-brand-green' : review.status === 'REJECTED' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{review.status}</span>
+                      <span className="rounded-full bg-brand-paper2 px-3 py-1 text-xs font-black text-brand-inkSoft">{review.rating}/5</span>
                       <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-black text-brand-blue">{review.product?.name ?? 'Producto'}</span>
                     </div>
                     <h2 className="mt-3 text-xl font-black">{review.title || `Comentario de ${review.name}`}</h2>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{review.name}{review.city ? ` · ${review.city}` : ''} · {new Date(review.createdAt).toLocaleString('es-CO')}</p>
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{review.comment}</p>
+                    <p className="mt-1 text-sm font-semibold text-brand-inkSoft">{review.name}{review.city ? ` · ${review.city}` : ''} · {new Date(review.createdAt).toLocaleString('es-CO')}</p>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-brand-inkSoft">{review.comment}</p>
                   </div>
                   <div className="flex flex-wrap gap-2 xl:justify-end">
-                    <button className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700" onClick={() => updateReviewStatus(review.id, 'APPROVED')}>Aprobar</button>
+                    <button className="rounded-2xl bg-brand-green/10 px-4 py-3 text-sm font-black text-brand-green" onClick={() => updateReviewStatus(review.id, 'APPROVED')}>Aprobar</button>
                     <button className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-black text-amber-700" onClick={() => updateReviewStatus(review.id, 'PENDING')}>Pendiente</button>
                     <button className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-700" onClick={() => updateReviewStatus(review.id, 'REJECTED')}>Rechazar</button>
                     <button className="rounded-2xl border border-red-100 p-3 text-red-600" onClick={() => deleteReview(review)} title="Eliminar comentario"><Trash2 size={18} /></button>
@@ -1870,7 +1975,7 @@ export function AdminBackoffice() {
                 </div>
               </article>
             ))}
-            {!reviews.length ? <div className="card p-8 text-center font-bold text-slate-500">No hay comentarios registrados.</div> : null}
+            {!reviews.length ? <div className="card p-8 text-center font-bold text-brand-inkSoft">No hay comentarios registrados.</div> : null}
           </div>
         ) : null}
 
@@ -1884,46 +1989,46 @@ export function AdminBackoffice() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-xs font-black uppercase text-brand-blue">{order.orderNumber}</p>
-                      <span className="text-xs font-semibold text-slate-400">{new Date(order.createdAt).toLocaleString('es-CO')}</span>
+                      <span className="text-xs font-semibold text-brand-inkSoft/70">{new Date(order.createdAt).toLocaleString('es-CO')}</span>
                     </div>
                     <h2 className="mt-1 text-xl font-black">{formatCurrency(order.grandTotal)}</h2>
 
                     <div className="mt-3 grid gap-1 text-sm">
-                      <p className="inline-flex items-center gap-2 font-black text-slate-800"><User size={14} className="text-brand-blue" /> {customerName}</p>
-                      {order.user?.email ? <p className="inline-flex items-center gap-2 text-slate-500"><Mail size={14} className="text-slate-400" /> {order.user.email}</p> : null}
-                      {order.shippingAddress?.phone ? <p className="inline-flex items-center gap-2 text-slate-500"><Phone size={14} className="text-slate-400" /> {order.shippingAddress.phone}</p> : null}
-                      {order.shippingAddress?.document ? <p className="inline-flex items-center gap-2 text-slate-500"><FileText size={14} className="text-slate-400" /> Doc. {order.shippingAddress.document}</p> : null}
+                      <p className="inline-flex items-center gap-2 font-black text-brand-ink"><User size={14} className="text-brand-blue" /> {customerName}</p>
+                      {order.user?.email ? <p className="inline-flex items-center gap-2 text-brand-inkSoft"><Mail size={14} className="text-brand-inkSoft/70" /> {order.user.email}</p> : null}
+                      {order.shippingAddress?.phone ? <p className="inline-flex items-center gap-2 text-brand-inkSoft"><Phone size={14} className="text-brand-inkSoft/70" /> {order.shippingAddress.phone}</p> : null}
+                      {order.shippingAddress?.document ? <p className="inline-flex items-center gap-2 text-brand-inkSoft"><FileText size={14} className="text-brand-inkSoft/70" /> Doc. {order.shippingAddress.document}</p> : null}
                     </div>
 
                     {order.shippingAddress ? (
-                      <p className="mt-2 inline-flex items-start gap-2 text-sm text-slate-500">
-                        <MapPin size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                      <p className="mt-2 inline-flex items-start gap-2 text-sm text-brand-inkSoft">
+                        <MapPin size={14} className="mt-0.5 shrink-0 text-brand-inkSoft/70" />
                         <span>{order.shippingAddress.addressLine1}{order.shippingAddress.addressLine2 ? `, ${order.shippingAddress.addressLine2}` : ''}, {order.shippingAddress.city}, {order.shippingAddress.department}</span>
                       </p>
                     ) : null}
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{labelFrom(paymentMethodLabels, order.paymentMethod ?? order.payments?.[0]?.method, 'Metodo pendiente')}</span>
-                      <span className={`rounded-full px-3 py-1 text-xs font-black ${order.payments?.[0]?.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : order.payments?.[0]?.status === 'DECLINED' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>Pago {labelFrom(paymentStatusLabels, order.payments?.[0]?.status, 'pendiente')}</span>
-                      {order.coupon ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700"><Tag size={12} /> {order.coupon.code}</span> : null}
+                      <span className="rounded-full bg-brand-paper2 px-3 py-1 text-xs font-black text-brand-inkSoft">{labelFrom(paymentMethodLabels, order.paymentMethod ?? order.payments?.[0]?.method, 'Metodo pendiente')}</span>
+                      <span className={`rounded-full px-3 py-1 text-xs font-black ${order.payments?.[0]?.status === 'APPROVED' ? 'bg-brand-green/10 text-brand-green' : order.payments?.[0]?.status === 'DECLINED' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>Pago {labelFrom(paymentStatusLabels, order.payments?.[0]?.status, 'pendiente')}</span>
+                      {order.coupon ? <span className="inline-flex items-center gap-1 rounded-full bg-brand-green/10 px-3 py-1 text-xs font-black text-brand-green"><Tag size={12} /> {order.coupon.code}</span> : null}
                     </div>
 
                     <details className="mt-4">
                       <summary className="cursor-pointer text-xs font-black text-brand-blue">Ver {order.items?.length ?? 0} producto(s) y detalle de totales</summary>
-                      <div className="mt-3 grid gap-2 rounded-2xl bg-slate-50 p-4">
+                      <div className="mt-3 grid gap-2 rounded-2xl bg-brand-paper2 p-4">
                         {order.items?.map((item) => (
                           <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
-                            <span className="min-w-0 truncate font-semibold text-slate-700">{item.quantity}x {item.nameSnapshot}{item.variantSnapshot ? ` (${item.variantSnapshot})` : ''}</span>
-                            <span className="shrink-0 font-black text-slate-900">{formatCurrency(item.totalPrice ?? Number(item.unitPrice ?? 0) * item.quantity)}</span>
+                            <span className="min-w-0 truncate font-semibold text-brand-inkSoft">{item.quantity}x {item.nameSnapshot}{item.variantSnapshot ? ` (${item.variantSnapshot})` : ''}</span>
+                            <span className="shrink-0 font-black text-brand-ink">{formatCurrency(item.totalPrice ?? Number(item.unitPrice ?? 0) * item.quantity)}</span>
                           </div>
                         ))}
-                        <div className="mt-2 grid gap-1 border-t border-slate-200 pt-2 text-xs font-semibold text-slate-500">
+                        <div className="mt-2 grid gap-1 border-t border-brand-line pt-2 text-xs font-semibold text-brand-inkSoft">
                           {order.subtotal !== undefined ? <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div> : null}
-                          {Number(order.discountTotal ?? 0) > 0 ? <div className="flex justify-between text-emerald-600"><span>Descuento{order.coupon ? ` (${order.coupon.code})` : ''}</span><span>-{formatCurrency(order.discountTotal ?? 0)}</span></div> : null}
+                          {Number(order.discountTotal ?? 0) > 0 ? <div className="flex justify-between text-brand-green"><span>Descuento{order.coupon ? ` (${order.coupon.code})` : ''}</span><span>-{formatCurrency(order.discountTotal ?? 0)}</span></div> : null}
                           {order.shippingTotal !== undefined ? <div className="flex justify-between"><span>Envio</span><span>{Number(order.shippingTotal) === 0 ? 'Gratis' : formatCurrency(order.shippingTotal)}</span></div> : null}
-                          <div className="flex justify-between text-sm font-black text-slate-800"><span>Total</span><span>{formatCurrency(order.grandTotal)}</span></div>
+                          <div className="flex justify-between text-sm font-black text-brand-ink"><span>Total</span><span>{formatCurrency(order.grandTotal)}</span></div>
                         </div>
-                        {order.notes ? <p className="mt-2 text-xs italic text-slate-500">Notas: {order.notes}</p> : null}
+                        {order.notes ? <p className="mt-2 text-xs italic text-brand-inkSoft">Notas: {order.notes}</p> : null}
                       </div>
                     </details>
                   </div>
@@ -1937,7 +2042,7 @@ export function AdminBackoffice() {
               </article>
               );
             })}
-            {!orders.length ? <div className="card p-8 text-center font-bold text-slate-500">No hay pedidos registrados.</div> : null}
+            {!orders.length ? <div className="card p-8 text-center font-bold text-brand-inkSoft">No hay pedidos registrados.</div> : null}
           </div>
         ) : null}
 
