@@ -1,0 +1,26 @@
+# Checklist preproduccion
+
+- [ ] Docker produccion configurado
+- [ ] PostgreSQL no expuesto
+- [ ] `.env` y `.env.production` fuera de GitHub
+- [ ] Admin demo eliminado en produccion
+- [ ] Cloudinary real configurado
+- [ ] Wompi sandbox probado
+- [ ] Wompi produccion configurado
+- [ ] Webhook probado: `https://tudominio.com/api/v1/payments/wompi/webhook`
+- [ ] SMTP configurado
+- [ ] Backup diario configurado
+- [ ] Backups copiados fuera del VPS
+- [ ] HTTPS funcionando con Caddy
+- [ ] Cloudflare en modo Full o Full strict
+- [ ] CORS limitado al dominio real
+- [ ] Swagger protegido o desactivado
+- [ ] Paginas legales creadas y revisadas por el negocio
+- [ ] Checkout Wompi probado
+- [ ] Checkout contraentrega probado
+- [ ] Servicio tecnico probado con subida de imagenes
+- [ ] Admin probado
+- [ ] Inventario reservado y liberado validado
+- [ ] Ordenes Wompi pendientes expiran y liberan reserva
+- [ ] Correos transaccionales recibidos
+- [ ] Datos legales reales completados: NIT, razon social, direccion, ciudad, correo y telefono

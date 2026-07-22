@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  @apply bg-brand-soft font-body text-slate-950 antialiased;
+  overflow-x: hidden;
+}
+
+/* Manual de marca CollectorFigu: Bricolage Grotesque para titulares y elementos de display. */
+h1,
+h2,
+h3,
+.font-display-heading {
+  @apply font-display;
+}
+
+main,
+section,
+article,
+form,
+nav,
+div {
+  min-width: 0;
+}
+
+a,
+button,
+p,
+h1,
+h2,
+h3,
+span,
+label {
+  overflow-wrap: anywhere;
+}
+
+::selection {
+  background: rgba(255, 182, 39, 0.35);
+}
+
+.container-page {
+  @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  width: 100%;
+}
+
+.brand-gradient-text {
+  @apply bg-gradient-to-r from-brand-blue via-brand-cyan to-white bg-clip-text text-transparent;
+}
+
+.brand-panel {
+  @apply border border-white/10 bg-white/[0.06] shadow-glow backdrop-blur-xl;
+}
+
+.btn-primary {
+  @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-brand-cyan px-5 py-3 text-center font-bold text-brand-dark shadow-cyan transition hover:-translate-y-0.5 hover:shadow-glow active:translate-y-0;
+}
+
+.btn-secondary {
+  @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-center font-bold text-white backdrop-blur transition hover:border-brand-cyan/60 hover:bg-white/20;
+}
+
+.btn-light {
+  @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-center font-bold text-brand-dark shadow-soft transition hover:-translate-y-0.5 hover:border-brand-blue/30;
+}
+
+.card {
+  @apply rounded-3xl border border-brand-line bg-white shadow-soft;
+}
+
+.input-brand {
+  @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10;
+}
+
+.badge-brand {
+  @apply inline-flex items-center rounded-full border border-brand-gold/30 bg-brand-violet/10 px-3 py-1 font-mono text-xs font-bold uppercase tracking-[0.2em] text-brand-gold;
+}
+
+.surface-dark {
+  @apply bg-brand-dark bg-brand-radial text-white;
+}
