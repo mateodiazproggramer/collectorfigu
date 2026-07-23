@@ -33,14 +33,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const product = await getProduct(slug).catch(() => notFound());
   const reviews = await getProductReviews(product.id);
-  // Trae hasta 100 productos de la misma categoria: alimenta tanto la seccion "Todas las {categoria}"
-  // (muestra los primeros 12 + link al catalogo completo) como las recomendaciones del modal de
-  // "Realizar pedido", que ahora muestra la lista completa de la categoria en vez de unas pocas.
-  const sameCategoryResult = product.category?.name
-    ? await getProducts({ category: product.category.name, available: true, limit: 100 }).catch(() => ({ items: [], meta: { total: 0 } }))
+  // Trae hasta 100 productos de la misma franquicia/marca (ej. todos los Marvel): alimenta tanto la
+  // seccion "Todo de {marca}" (primeros 12 + link al catalogo completo) como las recomendaciones del
+  // modal de "Realizar pedido", que muestra la lista completa de la franquicia en vez de unas pocas.
+  const sameBrandResult = product.brand?.name
+    ? await getProducts({ brand: product.brand.name, available: true, limit: 100 }).catch(() => ({ items: [], meta: { total: 0 } }))
     : { items: [], meta: { total: 0 } };
-  const sameCategoryProducts = (sameCategoryResult.items ?? []).filter((item: any) => item.id !== product.id).slice(0, 100);
-  const sameCategoryTotal = Math.max(0, (sameCategoryResult.meta?.total ?? sameCategoryProducts.length) - 1);
+  const sameBrandProducts = (sameBrandResult.items ?? []).filter((item: any) => item.id !== product.id).slice(0, 100);
+  const sameBrandTotal = Math.max(0, (sameBrandResult.meta?.total ?? sameBrandProducts.length) - 1);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://collectorfigu.com';
   const generalImages = (product.images ?? []).filter((entry: any) => !entry.variantId);
   const image = generalImages.find((entry: any) => entry.isMain)?.url ?? generalImages[0]?.url ?? product.images?.[0]?.url;
@@ -77,7 +77,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
       </section>
 
-      <ProductDetailExperience product={product} sameCategoryProducts={sameCategoryProducts} sameCategoryTotal={sameCategoryTotal} reviews={reviews} />
+      <ProductDetailExperience product={product} sameBrandProducts={sameBrandProducts} sameBrandTotal={sameBrandTotal} reviews={reviews} />
     </main>
   );
 }
