@@ -8,9 +8,15 @@ import { formatCurrency } from '@/lib/format';
 import { cartMetaPayload, trackMetaPixel, trackMetaPixelCustom } from '@/lib/meta-pixel';
 import { internationalOrderWhatsAppUrl } from '@/lib/whatsapp';
 import { citiesByDepartment, COLOMBIA_DEPARTMENTS, DEFAULT_CITY } from '@/lib/colombia-locations';
+import { cloudinaryThumb } from '@/lib/cloudinary';
 import { CitySelect } from '@/components/city-select';
 import { WhatsAppIcon } from '@/components/whatsapp-icon';
 import { WompiPaymentArt } from '@/components/wompi-payment-art';
+
+function productImage(item: CartItem) {
+  const generalImages = (item.product.images ?? []).filter((image: any) => !image.variantId);
+  return item.variant?.images?.[0]?.url ?? generalImages.find((image: any) => image.isMain)?.url ?? generalImages[0]?.url ?? item.product.images?.[0]?.url;
+}
 
 const BOGOTA_ALIASES = new Set(['bogota', 'bogota dc', 'bogota d c', 'bogota distrito capital']);
 
@@ -436,13 +442,21 @@ export function CheckoutClient() {
           <h2 className="mt-5 text-2xl font-black">{createdOrder ? 'Resumen confirmado' : 'Resumen'}</h2>
           <div className="mt-6 grid gap-4">
             {(createdOrder ? completedItems : items).map((item) => (
-              <div key={`${item.productId}:${item.variantId ?? 'default'}`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex justify-between gap-3">
+              <div key={`${item.productId}:${item.variantId ?? 'default'}`} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white/10">
+                  {productImage(item) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={cloudinaryThumb(productImage(item), 120)} alt={item.product.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <PackageCheck size={20} className="text-white/40" />
+                  )}
+                </span>
+                <div className="flex flex-1 items-start justify-between gap-3">
                   <span className="font-bold text-white">
                     {item.quantity}x {item.product.name}
                     {item.variant ? <span className="mt-1 block text-xs text-brand-cyan">Color {item.variant.colorName}</span> : null}
                   </span>
-                  <strong className="font-mono">{formatCurrency(Number(item.product.price) * item.quantity)}</strong>
+                  <strong className="shrink-0 font-mono">{formatCurrency(Number(item.product.price) * item.quantity)}</strong>
                 </div>
               </div>
             ))}
