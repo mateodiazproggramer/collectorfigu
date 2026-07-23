@@ -61,38 +61,8 @@ function productCover(product: any) {
   return variantImages[0]?.url ?? product.images?.[0]?.url;
 }
 
-function recommendationReason(product: any, accessory: any) {
-  const accessoryText = `${accessory.brand?.name ?? ''} ${accessory.name ?? ''} ${accessory.category?.name ?? ''}`.toLowerCase();
-  if (accessoryText.includes('llavero')) return 'Ideal para tu mochila o morral';
-  if (accessoryText.includes('set')) return 'Completa tu coleccion con este set';
-  if (accessory.brand?.name === product.brand?.name) return `Completa tu coleccion de ${product.brand?.name}`;
-  return 'Recomendado para completar tu compra';
-}
-
-function accessoryScore(product: any, accessory: any) {
-  const productText = `${product.brand?.name ?? ''} ${product.name ?? ''} ${product.category?.name ?? ''}`.toLowerCase();
-  const accessoryText = `${accessory.brand?.name ?? ''} ${accessory.name ?? ''} ${accessory.category?.name ?? ''}`.toLowerCase();
-  const accessoryPrice = Number(accessory.price ?? 0);
-  let score = 0;
-
-  if (accessory.id === product.id) return -999;
-  if (productStock(accessory) <= 0) return -999;
-
-  if (accessory.brand?.name && accessory.brand?.name === product.brand?.name) score += 60;
-  if (accessoryText.includes('llavero')) score += 45;
-  if (accessoryText.includes('set')) score += 30;
-  if (productText.includes('anime') && accessoryText.includes('anime')) score += 20;
-  if (accessoryPrice > 0 && accessoryPrice <= 18000) score += 15;
-
-  return score;
-}
-
-function recommendedAccessories(product: any, candidates: any[]) {
-  return candidates
-    .map((accessory) => ({ accessory, score: accessoryScore(product, accessory), reason: recommendationReason(product, accessory) }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score || Number(a.accessory.price ?? 0) - Number(b.accessory.price ?? 0))
-    .slice(0, 4);
+function categoryRecommendations(candidates: any[]) {
+  return candidates.filter((item) => productStock(item) > 0).map((accessory) => ({ accessory }));
 }
 
 function ProductVisual({ product, variant }: { product: any; variant?: ProductVariant }) {
@@ -363,7 +333,7 @@ function ProductReviews({ product, initialReviews }: { product: any; initialRevi
   );
 }
 
-export function ProductDetailExperience({ product, accessoryCandidates = [], sameCategoryProducts = [], sameCategoryTotal = 0, reviews }: { product: any; accessoryCandidates?: any[]; sameCategoryProducts?: any[]; sameCategoryTotal?: number; reviews?: ProductReviewsPayload }) {
+export function ProductDetailExperience({ product, sameCategoryProducts = [], sameCategoryTotal = 0, reviews }: { product: any; sameCategoryProducts?: any[]; sameCategoryTotal?: number; reviews?: ProductReviewsPayload }) {
   const router = useRouter();
   const variants = useMemo(() => (product.variants ?? []) as ProductVariant[], [product.variants]);
   const [selectedVariantId, setSelectedVariantId] = useState(() => availableVariant(product)?.id ?? '');
@@ -374,7 +344,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantId);
   const stock = variantStock(product, selectedVariant);
   const discount = getDiscount(product);
-  const accessories = useMemo(() => recommendedAccessories(product, accessoryCandidates), [product, accessoryCandidates]);
+  const accessories = useMemo(() => categoryRecommendations(sameCategoryProducts), [sameCategoryProducts]);
   const lineColor = LINE_COLOR_CLASSES[productLineColor(product.category?.name)];
 
   useEffect(() => {
@@ -522,11 +492,11 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
                 </div>
                 <div>
                   <p className="font-black text-brand-ink">Completa tu coleccion</p>
-                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Seleccionados por franquicia, personaje y presentacion.</p>
+                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Mas piezas de {product.category?.name}.</p>
                 </div>
               </div>
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                {accessories.slice(0, 3).map(({ accessory, reason }) => (
+                {accessories.slice(0, 6).map(({ accessory }) => (
                   <button key={accessory.id} type="button" onClick={() => addAccessory(accessory)} className="grid min-w-52 grid-cols-[52px_1fr] gap-3 rounded-2xl border border-white bg-white p-2 text-left shadow-soft transition hover:border-brand-blue/30">
                     <span className="grid h-[52px] w-[52px] place-items-center overflow-hidden rounded-xl bg-brand-paper2 text-brand-blue">
                       {productCover(accessory) ? (
@@ -536,12 +506,17 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
                     </span>
                     <span className="min-w-0">
                       <span className="line-clamp-1 text-xs font-black text-brand-ink">{accessory.name}</span>
-                      <span className="mt-0.5 block text-[11px] font-semibold text-brand-inkSoft">{reason}</span>
+                      <span className="mt-0.5 block text-[11px] font-semibold text-brand-inkSoft">{accessory.character ?? accessory.brand?.name}</span>
                       <span className="mt-1 inline-flex items-center text-xs font-black text-brand-blue">{accessoryAddedIds.includes(accessory.id) ? 'Agregado' : formatCurrency(accessory.price)}</span>
                     </span>
                   </button>
                 ))}
               </div>
+              {sameCategoryTotal > accessories.length ? (
+                <Link href={`/productos?category=${encodeURIComponent(product.category?.name ?? '')}`} className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-brand-blue">
+                  Ver los {sameCategoryTotal} productos de esta linea <ArrowRight size={13} />
+                </Link>
+              ) : null}
             </div>
           ) : null}
 
@@ -569,36 +544,6 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
           </div>
         </div>
 
-        {sameCategoryProducts.length ? (
-          <section className="mt-6 rounded-[1.5rem] border border-brand-line bg-white p-4 shadow-card sm:rounded-[2rem] sm:p-6">
-            <div className={`-mx-4 -mt-4 h-1.5 sm:-mx-6 sm:-mt-6 ${lineColor.bar}`} />
-            <div className="mt-4 flex flex-wrap items-start justify-between gap-3 sm:mt-5">
-              <div className="flex items-start gap-3">
-                <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${lineColor.chipBg} ${lineColor.chipText}`}>
-                  <LayoutGrid size={20} />
-                </div>
-                <div>
-                  <p className={`text-xs font-black uppercase tracking-[0.14em] ${lineColor.chipText}`}>{product.category?.name}</p>
-                  <h2 className="mt-1 text-xl font-black text-brand-ink sm:text-2xl">Todas las {product.category?.name}</h2>
-                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Explora el resto de la coleccion en esta misma linea.</p>
-                </div>
-              </div>
-              {sameCategoryTotal > sameCategoryProducts.length ? (
-                <Link
-                  href={`/productos?category=${encodeURIComponent(product.category?.name ?? '')}`}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-brand-line px-4 py-2.5 text-sm font-black text-brand-ink transition hover:border-brand-violet/40 hover:text-brand-violet"
-                >
-                  Ver los {sameCategoryTotal} productos <ArrowRight size={16} />
-                </Link>
-              ) : null}
-            </div>
-
-            <div className="mt-5">
-              <ProductGrid products={sameCategoryProducts} />
-            </div>
-          </section>
-        ) : null}
-
         <p className="mt-6 text-base leading-7 text-brand-inkSoft sm:text-lg sm:leading-8">{product.description}</p>
 
         <div className="mt-6 grid gap-3 rounded-[1.5rem] border border-brand-line/70 bg-white p-4 sm:grid-cols-2 sm:rounded-[2rem] sm:p-6">
@@ -625,6 +570,36 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
         <ProductReviews product={product} initialReviews={reviews} />
       </section>
 
+      {sameCategoryProducts.length ? (
+        <section className="rounded-[1.5rem] border border-brand-line bg-white p-4 shadow-card sm:rounded-[2rem] sm:p-6 lg:col-span-2">
+          <div className={`-mx-4 -mt-4 h-1.5 sm:-mx-6 sm:-mt-6 ${lineColor.bar}`} />
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-3 sm:mt-5">
+            <div className="flex items-start gap-3">
+              <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${lineColor.chipBg} ${lineColor.chipText}`}>
+                <LayoutGrid size={20} />
+              </div>
+              <div>
+                <p className={`text-xs font-black uppercase tracking-[0.14em] ${lineColor.chipText}`}>{product.category?.name}</p>
+                <h2 className="mt-1 text-xl font-black text-brand-ink sm:text-2xl">Todas las {product.category?.name}</h2>
+                <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Explora el resto de la coleccion en esta misma linea.</p>
+              </div>
+            </div>
+            {sameCategoryTotal > 12 ? (
+              <Link
+                href={`/productos?category=${encodeURIComponent(product.category?.name ?? '')}`}
+                className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-brand-line px-4 py-2.5 text-sm font-black text-brand-ink transition hover:border-brand-violet/40 hover:text-brand-violet"
+              >
+                Ver los {sameCategoryTotal} productos <ArrowRight size={16} />
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="mt-5">
+            <ProductGrid products={sameCategoryProducts.slice(0, 12)} />
+          </div>
+        </section>
+      ) : null}
+
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-brand-line bg-white/95 p-3 shadow-[0_-12px_35px_rgba(15,23,42,.12)] backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-2 gap-2">
           <button className="btn-primary min-w-0 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50" onClick={buyNow} disabled={stock <= 0 || (variants.length > 0 && !selectedVariant)}>
@@ -641,9 +616,9 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
           <div className="max-h-[88dvh] w-full overflow-y-auto rounded-t-[2rem] bg-white p-4 shadow-[0_-24px_60px_rgba(15,23,42,.25)] sm:max-w-2xl sm:rounded-[2rem] sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="inline-flex items-center rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-black text-brand-blue"><Sparkles size={13} className="mr-1" /> Completa tu coleccion</p>
+                <p className="inline-flex items-center rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-black text-brand-blue"><Sparkles size={13} className="mr-1" /> {product.category?.name}</p>
                 <h2 className="mt-3 text-2xl font-black text-brand-ink">Antes de pagar, arma tu set</h2>
-                <p className="mt-2 text-sm leading-6 text-brand-inkSoft">Puedes agregar figuras y llaveros compatibles ahora o pasar directo al checkout.</p>
+                <p className="mt-2 text-sm leading-6 text-brand-inkSoft">Esta es toda la coleccion de {product.category?.name}. Agrega lo que quieras ahora o pasa directo al checkout.</p>
               </div>
               <button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-paper2 text-brand-inkSoft" onClick={() => setUpsellOpen(false)} aria-label="Cerrar recomendaciones">
                 <X size={20} />
@@ -651,7 +626,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
             </div>
 
             <div className="mt-5 grid gap-3">
-              {accessories.map(({ accessory, reason }) => {
+              {accessories.map(({ accessory }) => {
                 const image = productCover(accessory);
                 const isAdded = accessoryAddedIds.includes(accessory.id);
                 return (
@@ -664,7 +639,7 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
                     </div>
                     <div className="min-w-0">
                       <p className="line-clamp-2 font-black leading-tight text-brand-ink">{accessory.name}</p>
-                      <p className="mt-1 text-xs font-semibold text-brand-inkSoft">{reason}</p>
+                      <p className="mt-1 text-xs font-semibold text-brand-inkSoft">{accessory.character ?? accessory.brand?.name}</p>
                       <p className="mt-2 text-lg font-black text-brand-dark">{formatCurrency(accessory.price)}</p>
                     </div>
                     <button type="button" className={`col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl px-4 text-sm font-black transition sm:col-span-1 ${isAdded ? 'bg-brand-green/10 text-brand-green' : 'bg-brand-blue text-white hover:bg-brand-blueInk'}`} onClick={() => addAccessory(accessory)} disabled={isAdded}>
@@ -674,6 +649,14 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], sam
                   </article>
                 );
               })}
+              {sameCategoryTotal > accessories.length ? (
+                <Link
+                  href={`/productos?category=${encodeURIComponent(product.category?.name ?? '')}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-dashed border-brand-line p-3 text-sm font-black text-brand-inkSoft transition hover:border-brand-violet/40 hover:text-brand-violet"
+                >
+                  Ver los {sameCategoryTotal} productos en el catalogo completo <ArrowRight size={15} />
+                </Link>
+              ) : null}
             </div>
 
             <div className="sticky bottom-0 -mx-4 mt-5 grid gap-2 border-t border-brand-line bg-white p-4 sm:-mx-6 sm:grid-cols-2 sm:px-6">

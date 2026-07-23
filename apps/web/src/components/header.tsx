@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Menu, Search, ShieldCheck } from 'lucide-react';
 import { BrandLogo } from '@/components/brand-logo';
 import { CartLink } from '@/components/cart-link';
+import { CategoryNavDropdown } from '@/components/category-nav-dropdown';
 import { SearchAutocomplete } from '@/components/search-autocomplete';
 
 // Nav principal: las 4 lineas de producto oficiales del manual de marca (CF-02 Que vende).
@@ -83,11 +84,8 @@ export function Header() {
       <div className="hidden border-t border-white/5 md:block">
         <div className="container-page flex items-center justify-between gap-4 py-3">
           <nav className="flex items-center gap-6 text-sm font-semibold text-white/75">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="transition hover:text-brand-cyan">
-                {item.label}
-              </Link>
-            ))}
+            <CategoryNavDropdown />
+            <Link href="/sobre-nosotros" className="transition hover:text-brand-cyan">Nosotros</Link>
           </nav>
           <div className="hidden items-center gap-2 xl:flex">
             {quickLinks.map((item) => (

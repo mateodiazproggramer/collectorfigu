@@ -33,18 +33,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const product = await getProduct(slug).catch(() => notFound());
   const reviews = await getProductReviews(product.id);
-  const accessoryGroups = await Promise.all([
-    getProducts({ category: 'Llaveros', available: true, limit: 16 }).catch(() => ({ items: [] })),
-    getProducts({ brand: product.brand?.name, available: true, limit: 12 }).catch(() => ({ items: [] })),
-    getProducts({ category: 'Funkos & Sets', available: true, limit: 8 }).catch(() => ({ items: [] })),
-  ]);
-  const accessoryCandidates = Array.from(
-    new Map(accessoryGroups.flatMap((group) => group.items ?? []).filter((item) => item.id !== product.id).map((item) => [item.id, item])).values(),
-  );
+  // Trae hasta 100 productos de la misma categoria: alimenta tanto la seccion "Todas las {categoria}"
+  // (muestra los primeros 12 + link al catalogo completo) como las recomendaciones del modal de
+  // "Realizar pedido", que ahora muestra la lista completa de la categoria en vez de unas pocas.
   const sameCategoryResult = product.category?.name
-    ? await getProducts({ category: product.category.name, available: true, limit: 13 }).catch(() => ({ items: [], meta: { total: 0 } }))
+    ? await getProducts({ category: product.category.name, available: true, limit: 100 }).catch(() => ({ items: [], meta: { total: 0 } }))
     : { items: [], meta: { total: 0 } };
-  const sameCategoryProducts = (sameCategoryResult.items ?? []).filter((item: any) => item.id !== product.id).slice(0, 12);
+  const sameCategoryProducts = (sameCategoryResult.items ?? []).filter((item: any) => item.id !== product.id).slice(0, 100);
   const sameCategoryTotal = Math.max(0, (sameCategoryResult.meta?.total ?? sameCategoryProducts.length) - 1);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://collectorfigu.com';
   const generalImages = (product.images ?? []).filter((entry: any) => !entry.variantId);
@@ -82,7 +77,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
       </section>
 
-      <ProductDetailExperience product={product} accessoryCandidates={accessoryCandidates} sameCategoryProducts={sameCategoryProducts} sameCategoryTotal={sameCategoryTotal} reviews={reviews} />
+      <ProductDetailExperience product={product} sameCategoryProducts={sameCategoryProducts} sameCategoryTotal={sameCategoryTotal} reviews={reviews} />
     </main>
   );
 }
