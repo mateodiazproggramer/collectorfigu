@@ -7,6 +7,8 @@ import { CartItem, clearCart, useCart } from '@/lib/cart-store';
 import { formatCurrency } from '@/lib/format';
 import { cartMetaPayload, trackMetaPixel, trackMetaPixelCustom } from '@/lib/meta-pixel';
 import { internationalOrderWhatsAppUrl } from '@/lib/whatsapp';
+import { citiesByDepartment, COLOMBIA_DEPARTMENTS, DEFAULT_CITY } from '@/lib/colombia-locations';
+import { CitySelect } from '@/components/city-select';
 import { WhatsAppIcon } from '@/components/whatsapp-icon';
 import { WompiPaymentArt } from '@/components/wompi-payment-art';
 
@@ -56,8 +58,8 @@ const initialForm: CheckoutForm = {
   phone: '',
   addressLine1: '',
   addressLine2: '',
-  city: 'Bogota',
-  department: 'Cundinamarca',
+  city: DEFAULT_CITY.city,
+  department: DEFAULT_CITY.department,
   country: 'CO',
   notes: '',
   paymentMethod: 'WOMPI',
@@ -343,9 +345,39 @@ export function CheckoutClient() {
                     <Field label="Apellidos" name="lastName" value={form.lastName} onChange={(value) => update('lastName', value)} error={errors.lastName} />
                     <Field label="Documento" name="document" value={form.document} onChange={(value) => update('document', value)} error={errors.document} hint="Lo usamos para la factura y la guia de envio." />
                     <Field label="Correo" name="email" type="email" value={form.email} onChange={(value) => update('email', value)} error={errors.email} />
+                    <label className="grid gap-2 text-sm font-bold text-brand-inkSoft">
+                      <span>Departamento</span>
+                      <select
+                        id="department"
+                        className="input-brand"
+                        value={form.department}
+                        onChange={(event) => {
+                          const nextDepartment = event.target.value;
+                          const firstCity = citiesByDepartment(nextDepartment)[0]?.city ?? '';
+                          setForm((current) => ({ ...current, department: nextDepartment, city: firstCity }));
+                          setErrors((current) => ({ ...current, department: '', city: '' }));
+                        }}
+                      >
+                        {COLOMBIA_DEPARTMENTS.map((department) => (
+                          <option key={department} value={department}>{department}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <div>
+                      <CitySelect
+                        label="Ciudad"
+                        name="city"
+                        value={form.city}
+                        department={form.department}
+                        error={errors.city}
+                        onSelect={(city) => {
+                          update('city', city);
+                          setErrors((current) => ({ ...current, city: '' }));
+                        }}
+                      />
+                      <p className="mt-2 text-xs font-semibold text-brand-inkSoft/70">{isBogota(form.city) ? 'Envio a Bogota: $9.000' : 'Envio a resto de Colombia: $18.500'}</p>
+                    </div>
                     <Field label="Teléfono / WhatsApp" name="phone" value={form.phone} onChange={(value) => update('phone', value)} error={errors.phone} />
-                    <Field label="Ciudad" name="city" value={form.city} onChange={(value) => update('city', value)} error={errors.city} hint={isBogota(form.city) ? 'Envio a Bogota: $9.000' : 'Envio a resto de Colombia: $18.500'} />
-                    <Field label="Departamento" name="department" value={form.department} onChange={(value) => update('department', value)} error={errors.department} />
                     <Field label="Direccion" name="addressLine1" value={form.addressLine1} onChange={(value) => update('addressLine1', value)} error={errors.addressLine1} />
                     <Field label="Complemento" name="addressLine2" value={form.addressLine2} onChange={(value) => update('addressLine2', value)} required={false} />
                   </div>
