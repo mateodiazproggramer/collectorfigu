@@ -41,17 +41,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const accessoryCandidates = Array.from(
     new Map(accessoryGroups.flatMap((group) => group.items ?? []).filter((item) => item.id !== product.id).map((item) => [item.id, item])).values(),
   );
-  const cheaperAlternativesResult = product.brand?.name
-    ? await getProducts({
-        brand: product.brand.name,
-        category: product.category?.name,
-        available: true,
-        maxPrice: Math.max(0, Number(product.price) - 1),
-        sort: 'price_desc',
-        limit: 8,
-      }).catch(() => ({ items: [] }))
-    : { items: [] };
-  const cheaperAlternatives = (cheaperAlternativesResult.items ?? []).filter((item: any) => item.id !== product.id);
+  const sameCategoryResult = product.category?.name
+    ? await getProducts({ category: product.category.name, available: true, limit: 13 }).catch(() => ({ items: [], meta: { total: 0 } }))
+    : { items: [], meta: { total: 0 } };
+  const sameCategoryProducts = (sameCategoryResult.items ?? []).filter((item: any) => item.id !== product.id).slice(0, 12);
+  const sameCategoryTotal = Math.max(0, (sameCategoryResult.meta?.total ?? sameCategoryProducts.length) - 1);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://collectorfigu.com';
   const generalImages = (product.images ?? []).filter((entry: any) => !entry.variantId);
   const image = generalImages.find((entry: any) => entry.isMain)?.url ?? generalImages[0]?.url ?? product.images?.[0]?.url;
@@ -88,7 +82,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
       </section>
 
-      <ProductDetailExperience product={product} accessoryCandidates={accessoryCandidates} cheaperAlternatives={cheaperAlternatives} reviews={reviews} />
+      <ProductDetailExperience product={product} accessoryCandidates={accessoryCandidates} sameCategoryProducts={sameCategoryProducts} sameCategoryTotal={sameCategoryTotal} reviews={reviews} />
     </main>
   );
 }

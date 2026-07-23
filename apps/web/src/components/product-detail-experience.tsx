@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { FormEvent, MouseEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, BadgeCheck, Blocks, Check, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Gift, Heart, Maximize2, PackagePlus, ShieldCheck, ShoppingCart, Sparkles, Star, Truck, Wallet, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Blocks, Check, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Gift, Heart, LayoutGrid, Maximize2, PackagePlus, ShieldCheck, ShoppingCart, Sparkles, Star, Truck, X } from 'lucide-react';
 import { LimitedEditionBadge } from '@/components/limited-edition-badge';
+import { ProductGrid } from '@/components/product-grid';
 import { WhatsAppIcon } from '@/components/whatsapp-icon';
 import { addCartItemVariant, ProductVariant, toggleFavorite } from '@/lib/cart-store';
 import { formatCurrency } from '@/lib/format';
@@ -362,7 +363,7 @@ function ProductReviews({ product, initialReviews }: { product: any; initialRevi
   );
 }
 
-export function ProductDetailExperience({ product, accessoryCandidates = [], cheaperAlternatives = [], reviews }: { product: any; accessoryCandidates?: any[]; cheaperAlternatives?: any[]; reviews?: ProductReviewsPayload }) {
+export function ProductDetailExperience({ product, accessoryCandidates = [], sameCategoryProducts = [], sameCategoryTotal = 0, reviews }: { product: any; accessoryCandidates?: any[]; sameCategoryProducts?: any[]; sameCategoryTotal?: number; reviews?: ProductReviewsPayload }) {
   const router = useRouter();
   const variants = useMemo(() => (product.variants ?? []) as ProductVariant[], [product.variants]);
   const [selectedVariantId, setSelectedVariantId] = useState(() => availableVariant(product)?.id ?? '');
@@ -568,34 +569,32 @@ export function ProductDetailExperience({ product, accessoryCandidates = [], che
           </div>
         </div>
 
-        {cheaperAlternatives.length ? (
-          <section className="mt-6 rounded-[1.5rem] border border-brand-line/60 bg-brand-paper2/60 p-4 sm:rounded-[2rem] sm:p-6">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-green/10 text-brand-green">
-                <Wallet size={18} />
+        {sameCategoryProducts.length ? (
+          <section className="mt-6 rounded-[1.5rem] border border-brand-line bg-white p-4 shadow-card sm:rounded-[2rem] sm:p-6">
+            <div className={`-mx-4 -mt-4 h-1.5 sm:-mx-6 sm:-mt-6 ${lineColor.bar}`} />
+            <div className="mt-4 flex flex-wrap items-start justify-between gap-3 sm:mt-5">
+              <div className="flex items-start gap-3">
+                <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${lineColor.chipBg} ${lineColor.chipText}`}>
+                  <LayoutGrid size={20} />
+                </div>
+                <div>
+                  <p className={`text-xs font-black uppercase tracking-[0.14em] ${lineColor.chipText}`}>{product.category?.name}</p>
+                  <h2 className="mt-1 text-xl font-black text-brand-ink sm:text-2xl">Todas las {product.category?.name}</h2>
+                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Explora el resto de la coleccion en esta misma linea.</p>
+                </div>
               </div>
-              <div>
-                <p className="font-black text-brand-ink">¿Buscas mas figuras de {product.brand?.name}?</p>
-                <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Misma franquicia y presentacion, de mayor a menor precio.</p>
-              </div>
-            </div>
-            <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
-              {cheaperAlternatives.map((alt: any) => (
-                <Link key={alt.id} href={`/productos/${alt.slug}`} className="group grid w-36 shrink-0 gap-2 rounded-2xl border border-brand-line p-2 transition hover:border-brand-blue/40 hover:shadow-soft sm:w-40">
-                  <div className="aspect-square overflow-hidden rounded-xl bg-brand-paper2">
-                    {productCover(alt) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={cloudinaryThumb(productCover(alt), 200)} alt={alt.name} loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />
-                    ) : (
-                      <div className="grid h-full place-items-center text-brand-blue"><Blocks size={28} /></div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="line-clamp-2 text-xs font-black leading-tight text-brand-ink">{alt.name}</p>
-                    <p className="mt-1 text-sm font-black text-brand-dark">{formatCurrency(alt.price)}</p>
-                  </div>
+              {sameCategoryTotal > sameCategoryProducts.length ? (
+                <Link
+                  href={`/productos?category=${encodeURIComponent(product.category?.name ?? '')}`}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-brand-line px-4 py-2.5 text-sm font-black text-brand-ink transition hover:border-brand-violet/40 hover:text-brand-violet"
+                >
+                  Ver los {sameCategoryTotal} productos <ArrowRight size={16} />
                 </Link>
-              ))}
+              ) : null}
+            </div>
+
+            <div className="mt-5">
+              <ProductGrid products={sameCategoryProducts} />
             </div>
           </section>
         ) : null}
