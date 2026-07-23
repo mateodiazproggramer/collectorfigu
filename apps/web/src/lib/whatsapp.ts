@@ -20,6 +20,17 @@ export function salesWhatsAppUrl(context?: string) {
   return buildWhatsAppUrl(message);
 }
 
+export function internationalOrderWhatsAppUrl(country?: string, context?: string) {
+  const message = [
+    'Hola CollectorFigu, quiero hacer un pedido con envio fuera de Colombia.',
+    country ? `Pais/ciudad de entrega: ${country}` : 'Pais/ciudad de entrega:',
+    context ? `Estoy revisando: ${context}` : 'Que productos tienen disponibles?',
+    'Me ayudan a cotizar el envio internacional?',
+  ].join('\n');
+
+  return buildWhatsAppUrl(message);
+}
+
 export function specialOrderWhatsAppUrl(context?: string) {
   const message = [
     'Hola CollectorFigu, quiero hacer un pedido especial.',

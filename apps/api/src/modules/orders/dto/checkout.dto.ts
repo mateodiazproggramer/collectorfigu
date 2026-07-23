@@ -18,6 +18,7 @@ export class CheckoutDto {
   @IsOptional() @IsString() @MaxLength(160) addressLine2?: string;
   @IsString() @IsNotEmpty() @MaxLength(80) city!: string;
   @IsString() @IsNotEmpty() @MaxLength(80) department!: string;
+  @IsString() @IsNotEmpty() @MaxLength(2) country!: string;
   @IsEnum(PaymentMethod) paymentMethod!: PaymentMethod;
   @IsOptional() @IsString() @MaxLength(500) notes?: string;
 }

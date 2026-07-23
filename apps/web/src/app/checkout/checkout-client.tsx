@@ -2,11 +2,32 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { BadgeCheck, CheckCircle2, CreditCard, ExternalLink, Frame, LockKeyhole, MailCheck, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, CreditCard, ExternalLink, Frame, Globe2, LockKeyhole, MailCheck, MapPin, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
 import { CartItem, clearCart, useCart } from '@/lib/cart-store';
 import { formatCurrency } from '@/lib/format';
 import { cartMetaPayload, trackMetaPixel, trackMetaPixelCustom } from '@/lib/meta-pixel';
+import { internationalOrderWhatsAppUrl } from '@/lib/whatsapp';
+import { WhatsAppIcon } from '@/components/whatsapp-icon';
 import { WompiPaymentArt } from '@/components/wompi-payment-art';
+
+const BOGOTA_ALIASES = new Set(['bogota', 'bogota dc', 'bogota d c', 'bogota distrito capital']);
+
+function normalizeLocationText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[.,]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isBogota(city: string) {
+  return BOGOTA_ALIASES.has(normalizeLocationText(city));
+}
+
+const SHIPPING_BOGOTA = 9000;
+const SHIPPING_NATIONAL = 18500;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
@@ -22,6 +43,7 @@ type CheckoutForm = {
   addressLine2: string;
   city: string;
   department: string;
+  country: 'CO' | 'OTHER';
   notes: string;
   paymentMethod: PaymentMethod;
 };
@@ -36,6 +58,7 @@ const initialForm: CheckoutForm = {
   addressLine2: '',
   city: 'Bogota',
   department: 'Cundinamarca',
+  country: 'CO',
   notes: '',
   paymentMethod: 'WOMPI',
 };
@@ -67,10 +90,12 @@ function validateCheckoutForm(form: CheckoutForm): Record<string, string> {
   if (!form.email.trim()) errors.email = 'Ingresa tu correo.';
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Ingresa un correo valido.';
   if (!form.phone.trim()) errors.phone = 'Ingresa tu telefono o WhatsApp.';
-  if (!form.city.trim()) errors.city = 'Ingresa la ciudad.';
-  if (!form.department.trim()) errors.department = 'Ingresa el departamento.';
-  if (!form.addressLine1.trim()) errors.addressLine1 = 'Ingresa la direccion de entrega.';
-  else if (form.addressLine1.trim().length < 4) errors.addressLine1 = 'La direccion debe tener al menos 4 caracteres.';
+  if (form.country === 'CO') {
+    if (!form.city.trim()) errors.city = 'Ingresa la ciudad.';
+    if (!form.department.trim()) errors.department = 'Ingresa el departamento.';
+    if (!form.addressLine1.trim()) errors.addressLine1 = 'Ingresa la direccion de entrega.';
+    else if (form.addressLine1.trim().length < 4) errors.addressLine1 = 'La direccion debe tener al menos 4 caracteres.';
+  }
   return errors;
 }
 
@@ -93,11 +118,12 @@ export function CheckoutClient() {
   const trackedCheckoutSignature = useRef('');
 
   const hasCuadroPersonalizado = items.some((item) => item.product.category?.name === 'Cuadros personalizados');
-  const shippingBase = subtotal > 500000 || subtotal === 0 ? 0 : 12000;
+  const isInternational = form.country !== 'CO';
+  const shippingBase = subtotal === 0 ? 0 : subtotal > 500000 ? 0 : isBogota(form.city) ? SHIPPING_BOGOTA : SHIPPING_NATIONAL;
   const discount = appliedCoupon?.discount ?? 0;
   const shipping = appliedCoupon?.freeShipping ? 0 : shippingBase;
   const total = Math.max(0, subtotal + shipping - discount);
-  const canSubmit = useMemo(() => items.length > 0 && !loading, [items.length, loading]);
+  const canSubmit = useMemo(() => items.length > 0 && !loading && !isInternational, [items.length, loading, isInternational]);
   const checkoutSignature = useMemo(() => items.map((item) => `${item.productId}:${item.variantId ?? 'default'}:${item.quantity}`).join('|'), [items]);
 
   useEffect(() => {
@@ -152,7 +178,7 @@ export function CheckoutClient() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!items.length) return;
+    if (!items.length || isInternational) return;
     const validationErrors = validateCheckoutForm(form);
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) {
@@ -272,37 +298,77 @@ export function CheckoutClient() {
           ) : (
             <>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <Field label="Nombre" name="firstName" value={form.firstName} onChange={(value) => update('firstName', value)} error={errors.firstName} />
-                <Field label="Apellidos" name="lastName" value={form.lastName} onChange={(value) => update('lastName', value)} error={errors.lastName} />
-                <Field label="Documento" name="document" value={form.document} onChange={(value) => update('document', value)} error={errors.document} hint="Lo usamos para la factura y la guia de envio." />
-                <Field label="Correo" name="email" type="email" value={form.email} onChange={(value) => update('email', value)} error={errors.email} />
-                <Field label="Teléfono / WhatsApp" name="phone" value={form.phone} onChange={(value) => update('phone', value)} error={errors.phone} />
-                <Field label="Ciudad" name="city" value={form.city} onChange={(value) => update('city', value)} error={errors.city} />
-                <Field label="Departamento" name="department" value={form.department} onChange={(value) => update('department', value)} error={errors.department} />
-                <Field label="Direccion" name="addressLine1" value={form.addressLine1} onChange={(value) => update('addressLine1', value)} error={errors.addressLine1} />
-                <Field label="Complemento" name="addressLine2" value={form.addressLine2} onChange={(value) => update('addressLine2', value)} required={false} />
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => update('country', 'CO')}
+                  className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${form.country === 'CO' ? 'border-brand-violet bg-brand-violet/5 shadow-soft' : 'border-brand-line bg-white'}`}
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-violet/10 text-brand-violet"><MapPin size={18} /></span>
+                  <span>
+                    <span className="block font-black text-brand-ink">Envio dentro de Colombia</span>
+                    <span className="block text-xs font-semibold text-brand-inkSoft">Bogota $9.000 · Resto del pais $18.500</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update('country', 'OTHER')}
+                  className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${form.country === 'OTHER' ? 'border-brand-violet bg-brand-violet/5 shadow-soft' : 'border-brand-line bg-white'}`}
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-violet/10 text-brand-violet"><Globe2 size={18} /></span>
+                  <span>
+                    <span className="block font-black text-brand-ink">Envio fuera de Colombia</span>
+                    <span className="block text-xs font-semibold text-brand-inkSoft">Lo cotizamos por WhatsApp</span>
+                  </span>
+                </button>
               </div>
 
-              {hasCuadroPersonalizado ? (
-                <div className="mt-6 rounded-[1.5rem] border border-brand-pop/25 bg-brand-pop/5 p-4">
-                  <p className="inline-flex items-center gap-2 font-black text-brand-ink"><Frame size={18} className="text-brand-pop" /> Tu pedido incluye un cuadro personalizado</p>
-                  <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Cuéntanos qué personajes quieres (nombres, franquicia y cuántos van) en el campo de abajo para armar tu pieza.</p>
+              {isInternational ? (
+                <div className="mt-6 rounded-[2rem] border border-brand-green/30 bg-brand-green/5 p-6">
+                  <p className="inline-flex items-center gap-2 font-black text-brand-ink"><Globe2 size={18} className="text-brand-green" /> Por ahora no procesamos pagos para envios fuera de Colombia</p>
+                  <p className="mt-2 text-sm leading-6 text-brand-inkSoft">Escribenos por WhatsApp y te ayudamos a cotizar el envio internacional y coordinar el pago directamente con un asesor.</p>
+                  <a
+                    href={internationalOrderWhatsAppUrl(undefined, items.map((item) => `${item.quantity}x ${item.product.name}`).join(', '))}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-black text-white shadow-[0_14px_30px_-10px_rgba(23,138,78,.55)] transition hover:-translate-y-0.5"
+                  >
+                    <WhatsAppIcon size={18} /> Cotizar por WhatsApp
+                  </a>
                 </div>
-              ) : null}
+              ) : (
+                <>
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <Field label="Nombre" name="firstName" value={form.firstName} onChange={(value) => update('firstName', value)} error={errors.firstName} />
+                    <Field label="Apellidos" name="lastName" value={form.lastName} onChange={(value) => update('lastName', value)} error={errors.lastName} />
+                    <Field label="Documento" name="document" value={form.document} onChange={(value) => update('document', value)} error={errors.document} hint="Lo usamos para la factura y la guia de envio." />
+                    <Field label="Correo" name="email" type="email" value={form.email} onChange={(value) => update('email', value)} error={errors.email} />
+                    <Field label="Teléfono / WhatsApp" name="phone" value={form.phone} onChange={(value) => update('phone', value)} error={errors.phone} />
+                    <Field label="Ciudad" name="city" value={form.city} onChange={(value) => update('city', value)} error={errors.city} hint={isBogota(form.city) ? 'Envio a Bogota: $9.000' : 'Envio a resto de Colombia: $18.500'} />
+                    <Field label="Departamento" name="department" value={form.department} onChange={(value) => update('department', value)} error={errors.department} />
+                    <Field label="Direccion" name="addressLine1" value={form.addressLine1} onChange={(value) => update('addressLine1', value)} error={errors.addressLine1} />
+                    <Field label="Complemento" name="addressLine2" value={form.addressLine2} onChange={(value) => update('addressLine2', value)} required={false} />
+                  </div>
 
-              <label className="mt-4 grid gap-2 text-sm font-bold text-brand-inkSoft">
-                {hasCuadroPersonalizado ? 'Personajes para tu cuadro y notas de entrega' : 'Notas de entrega'}
-                <textarea
-                  className="input-brand min-h-28"
-                  value={form.notes}
-                  onChange={(event) => update('notes', event.target.value)}
-                  placeholder={hasCuadroPersonalizado ? 'Ej: Quiero a Goku y Vegeta, estilo Dragon Ball Super, para regalo de cumpleaños.' : 'Horario, barrio, referencias o condiciones de entrega.'}
-                />
-              </label>
+                  {hasCuadroPersonalizado ? (
+                    <div className="mt-6 rounded-[1.5rem] border border-brand-pop/25 bg-brand-pop/5 p-4">
+                      <p className="inline-flex items-center gap-2 font-black text-brand-ink"><Frame size={18} className="text-brand-pop" /> Tu pedido incluye un cuadro personalizado</p>
+                      <p className="mt-1 text-sm leading-6 text-brand-inkSoft">Cuéntanos qué personajes quieres (nombres, franquicia y cuántos van) en el campo de abajo para armar tu pieza.</p>
+                    </div>
+                  ) : null}
 
-              <h2 className="mt-9 text-2xl font-black">Metodo de pago</h2>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <label className="mt-4 grid gap-2 text-sm font-bold text-brand-inkSoft">
+                    {hasCuadroPersonalizado ? 'Personajes para tu cuadro y notas de entrega' : 'Notas de entrega'}
+                    <textarea
+                      className="input-brand min-h-28"
+                      value={form.notes}
+                      onChange={(event) => update('notes', event.target.value)}
+                      placeholder={hasCuadroPersonalizado ? 'Ej: Quiero a Goku y Vegeta, estilo Dragon Ball Super, para regalo de cumpleaños.' : 'Horario, barrio, referencias o condiciones de entrega.'}
+                    />
+                  </label>
+
+                  <h2 className="mt-9 text-2xl font-black">Metodo de pago</h2>
+                  <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <label className={`cursor-pointer rounded-3xl border p-5 transition ${form.paymentMethod === 'WOMPI' ? 'border-brand-blue bg-brand-blue/5 shadow-soft' : 'border-brand-line bg-white'}`}>
                   <input type="radio" name="paymentMethod" value="WOMPI" checked={form.paymentMethod === 'WOMPI'} onChange={() => update('paymentMethod', 'WOMPI')} className="sr-only" />
                   <div className="flex items-start justify-between gap-3">
@@ -315,18 +381,20 @@ export function CheckoutClient() {
                   <p className="mt-2 text-xs leading-5 text-brand-inkSoft">Te llevaremos a Wompi para completar el pago con los medios habilitados en la pasarela.</p>
                   <WompiPaymentArt className="mt-4" />
                 </label>
-                <label className={`cursor-pointer rounded-3xl border p-5 transition ${form.paymentMethod === 'CASH_ON_DELIVERY' ? 'border-brand-green bg-brand-green/10 shadow-soft' : 'border-brand-line bg-white'}`}>
-                  <input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" checked={form.paymentMethod === 'CASH_ON_DELIVERY'} onChange={() => update('paymentMethod', 'CASH_ON_DELIVERY')} className="sr-only" />
-                  <Truck className="text-brand-green" size={28} />
-                  <p className="mt-4 font-black">Pago contraentrega</p>
-                  <p className="mt-2 text-xs leading-5 text-brand-inkSoft">Pedido sujeto a cobertura, llamada/WhatsApp de confirmacion y validacion de disponibilidad antes de despacho.</p>
-                </label>
-              </div>
+                    <label className={`cursor-pointer rounded-3xl border p-5 transition ${form.paymentMethod === 'CASH_ON_DELIVERY' ? 'border-brand-green bg-brand-green/10 shadow-soft' : 'border-brand-line bg-white'}`}>
+                      <input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" checked={form.paymentMethod === 'CASH_ON_DELIVERY'} onChange={() => update('paymentMethod', 'CASH_ON_DELIVERY')} className="sr-only" />
+                      <Truck className="text-brand-green" size={28} />
+                      <p className="mt-4 font-black">Pago contraentrega</p>
+                      <p className="mt-2 text-xs leading-5 text-brand-inkSoft">Pedido sujeto a cobertura, llamada/WhatsApp de confirmacion y validacion de disponibilidad antes de despacho.</p>
+                    </label>
+                  </div>
 
-              <div className="mt-6 rounded-[2rem] border border-brand-blue/20 bg-brand-blue/5 p-5 text-sm font-semibold text-brand-inkSoft">
-                <ShieldCheck size={18} className="mr-2 inline text-brand-blue" /> En Wompi no almacenamos datos sensibles de tarjetas. Si el pago es con tarjeta, la seleccion de cuotas se gestiona dentro de la pasarela cuando aplique.
-              </div>
-              <button className="btn-primary mt-8" disabled={!canSubmit}>{loading ? 'Creando pedido...' : form.paymentMethod === 'WOMPI' ? 'Continuar a pago seguro' : 'Crear pedido contraentrega'}</button>
+                  <div className="mt-6 rounded-[2rem] border border-brand-blue/20 bg-brand-blue/5 p-5 text-sm font-semibold text-brand-inkSoft">
+                    <ShieldCheck size={18} className="mr-2 inline text-brand-blue" /> En Wompi no almacenamos datos sensibles de tarjetas. Si el pago es con tarjeta, la seleccion de cuotas se gestiona dentro de la pasarela cuando aplique.
+                  </div>
+                  <button className="btn-primary mt-8" disabled={!canSubmit}>{loading ? 'Creando pedido...' : form.paymentMethod === 'WOMPI' ? 'Continuar a pago seguro' : 'Crear pedido contraentrega'}</button>
+                </>
+              )}
             </>
           )}
         </form>
@@ -385,8 +453,12 @@ export function CheckoutClient() {
             {(createdOrder ? completedTotals.discount : discount) > 0 ? (
               <div className="flex justify-between text-brand-green"><span>Descuento</span><strong>-{formatCurrency(createdOrder ? completedTotals.discount : discount)}</strong></div>
             ) : null}
-            <div className="flex justify-between"><span className="text-white/60">Envio</span><strong>{(createdOrder ? completedTotals.shipping : shipping) === 0 ? 'Gratis' : formatCurrency(createdOrder ? completedTotals.shipping : shipping)}</strong></div>
-            <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong className="font-mono">{formatCurrency(createdOrder ? completedTotals.total : total)}</strong></div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Envio</span>
+              <strong>{isInternational && !createdOrder ? 'Cotiza por WhatsApp' : (createdOrder ? completedTotals.shipping : shipping) === 0 ? 'Gratis' : formatCurrency(createdOrder ? completedTotals.shipping : shipping)}</strong>
+            </div>
+            <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong className="font-mono">{isInternational && !createdOrder ? formatCurrency(subtotal - discount) : formatCurrency(createdOrder ? completedTotals.total : total)}</strong></div>
+            {isInternational && !createdOrder ? <p className="text-xs font-semibold text-white/50">El total no incluye envio internacional, lo coordinamos por WhatsApp.</p> : null}
           </div>
           <div className="mt-5 rounded-2xl bg-white/10 p-4 text-xs leading-5 text-white/70">
             <CheckCircle2 size={16} className="mr-2 inline text-brand-cyan" /> La reserva de inventario se genera al crear el pedido.

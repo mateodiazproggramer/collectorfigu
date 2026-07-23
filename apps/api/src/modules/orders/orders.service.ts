@@ -25,6 +25,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   async publicCheckout(dto: PublicCheckoutDto) {
     if (!dto.items?.length) throw new BadRequestException('El carrito esta vacio');
+    this.assertDomesticShipping(dto);
     if (dto.paymentMethod !== PaymentMethod.WOMPI && dto.paymentMethod !== PaymentMethod.CASH_ON_DELIVERY) {
       throw new BadRequestException('Metodo de pago no disponible en checkout publico');
     }
@@ -58,6 +59,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
   }
 
   async checkout(userId: string, dto: CheckoutDto) {
+    this.assertDomesticShipping(dto);
     const cart = await this.prisma.cart.findUnique({ where: { userId }, include: { coupon: true, items: { include: { variant: true, product: { include: { inventory: true } } } } } });
     if (!cart || cart.items.length === 0) throw new BadRequestException('El carrito está vacío');
 
@@ -70,11 +72,11 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       }
       const discountTotal = new Prisma.Decimal(0);
       const taxTotal = new Prisma.Decimal(0);
-      const shippingTotal = subtotal.greaterThan(500000) ? new Prisma.Decimal(0) : new Prisma.Decimal(12000);
+      const shippingTotal = this.calculateShippingTotal(dto.city, subtotal, false);
       const grandTotal = subtotal.minus(discountTotal).plus(taxTotal).plus(shippingTotal);
 
       const customer = await tx.customer.upsert({ where: { userId }, update: { document: dto.document }, create: { userId, document: dto.document } });
-      const address = await tx.shippingAddress.create({ data: { customerId: customer.id, firstName: dto.firstName, lastName: dto.lastName, document: dto.document, phone: dto.phone, addressLine1: dto.addressLine1, addressLine2: dto.addressLine2, city: dto.city, department: dto.department } });
+      const address = await tx.shippingAddress.create({ data: { customerId: customer.id, firstName: dto.firstName, lastName: dto.lastName, document: dto.document, phone: dto.phone, addressLine1: dto.addressLine1, addressLine2: dto.addressLine2, city: dto.city, department: dto.department, country: dto.country } });
       const orderNumber = createPublicCode('ORD');
       const order = await tx.order.create({
         data: {
@@ -129,10 +131,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       }
 
       const taxTotal = new Prisma.Decimal(0);
-      const shippingTotal = freeShippingFromCoupon || subtotal.greaterThan(500000) ? new Prisma.Decimal(0) : new Prisma.Decimal(12000);
+      const shippingTotal = this.calculateShippingTotal(dto.city, subtotal, freeShippingFromCoupon);
       const grandTotal = subtotal.minus(discountTotal).plus(taxTotal).plus(shippingTotal);
       const customer = await tx.customer.upsert({ where: { userId }, update: { document: dto.document }, create: { userId, document: dto.document } });
-      const address = await tx.shippingAddress.create({ data: { customerId: customer.id, firstName: dto.firstName, lastName: dto.lastName, document: dto.document, phone: dto.phone, addressLine1: dto.addressLine1, addressLine2: dto.addressLine2, city: dto.city, department: dto.department, notes: dto.notes } });
+      const address = await tx.shippingAddress.create({ data: { customerId: customer.id, firstName: dto.firstName, lastName: dto.lastName, document: dto.document, phone: dto.phone, addressLine1: dto.addressLine1, addressLine2: dto.addressLine2, city: dto.city, department: dto.department, country: dto.country, notes: dto.notes } });
       const orderNumber = createPublicCode('ORD');
       const order = await tx.order.create({
         data: {
@@ -208,10 +210,45 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     if (!integrity || (process.env.NODE_ENV === 'production' && integrity === 'test_integrity_secret')) throw new BadRequestException('Integridad Wompi no configurada');
   }
 
+  private normalizeLocationText(value: string) {
+    return value
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[.,]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private isBogota(city: string) {
+    const normalized = this.normalizeLocationText(city);
+    return ['bogota', 'bogota dc', 'bogota d c', 'bogota distrito capital'].includes(normalized);
+  }
+
+  /**
+   * Tarifas fijas por destino: Bogota $9.000, resto de Colombia $18.500. El pedido gratis
+   * (cupon FREE_SHIPPING o subtotal > $500.000) sigue por encima de esta regla.
+   */
+  private calculateShippingTotal(city: string, subtotal: Prisma.Decimal, freeShippingFromCoupon: boolean): Prisma.Decimal {
+    if (freeShippingFromCoupon || subtotal.greaterThan(500000)) return new Prisma.Decimal(0);
+    return new Prisma.Decimal(this.isBogota(city) ? 9000 : 18500);
+  }
+
+  /**
+   * Blindaje del lado del servidor: aunque el frontend ya redirige a WhatsApp cuando el pais no
+   * es Colombia, esto evita que alguien complete un pedido internacional llamando la API directo.
+   */
+  private assertDomesticShipping(dto: CheckoutDto) {
+    const country = (dto.country ?? '').trim().toUpperCase();
+    if (country !== 'CO') {
+      throw new BadRequestException('Por ahora solo hacemos envios directos dentro de Colombia. Escribenos por WhatsApp para pedidos internacionales.');
+    }
+  }
+
   private validateCashOnDelivery(dto: CheckoutDto) {
-    const covered = ['bogota', 'bogotá', 'medellin', 'medellín', 'cali', 'barranquilla', 'cartagena', 'bucaramanga'];
-    const city = dto.city.trim().toLowerCase();
-    if (!covered.includes(city)) throw new BadRequestException('Pago contraentrega disponible por ahora solo en ciudades principales. Elige Wompi o contactanos por WhatsApp.');
+    const covered = ['medellin', 'cali', 'barranquilla', 'cartagena', 'bucaramanga'];
+    const city = this.normalizeLocationText(dto.city);
+    if (!this.isBogota(dto.city) && !covered.includes(city)) throw new BadRequestException('Pago contraentrega disponible por ahora solo en ciudades principales. Elige Wompi o contactanos por WhatsApp.');
     if (dto.phone.replace(/\D/g, '').length < 10) throw new BadRequestException('Para contraentrega necesitamos un numero de telefono valido para confirmar el pedido.');
   }
 

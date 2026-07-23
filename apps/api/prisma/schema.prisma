@@ -306,6 +306,7 @@ model ShippingAddress {
   addressLine2 String?
   city         String
   department   String
+  country      String    @default("CO")
   notes        String?
   isDefault    Boolean   @default(false)
   orders       Order[]

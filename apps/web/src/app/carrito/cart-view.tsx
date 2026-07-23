@@ -23,9 +23,9 @@ export function CartView() {
   const [syncing, setSyncing] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
   const trackedCartSignature = useRef('');
-  const shipping = subtotal > 500000 || subtotal === 0 ? 0 : 12000;
+  const freeShipping = subtotal > 500000 || subtotal === 0;
   const taxes = 0;
-  const total = subtotal + shipping + taxes;
+  const total = subtotal + taxes;
   const cartSignature = useMemo(() => items.map((item) => `${item.productId}:${item.variantId ?? 'default'}:${item.quantity}`).join('|'), [items]);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ export function CartView() {
           <h2 className="text-2xl font-black">Resumen</h2>
           <div className="mt-6 grid gap-4 text-sm">
             <div className="flex justify-between"><span className="text-brand-inkSoft">Subtotal</span><strong>{formatCurrency(subtotal)}</strong></div>
-            <div className="flex justify-between"><span className="text-brand-inkSoft">Envio estimado</span><strong>{shipping === 0 ? 'Gratis' : formatCurrency(shipping)}</strong></div>
+            <div className="flex justify-between"><span className="text-brand-inkSoft">Envio</span><strong>{freeShipping ? 'Gratis' : 'Bogota $9.000 · Resto $18.500'}</strong></div>
             <div className="flex justify-between"><span className="text-brand-inkSoft">Impuestos</span><strong>{formatCurrency(taxes)}</strong></div>
           </div>
           <div className="mt-6 rounded-2xl bg-brand-paper2 p-4 text-xs leading-5 text-brand-inkSoft">
@@ -188,6 +188,7 @@ export function CartView() {
           <WompiPaymentArt className="mt-4" />
           <div className="mt-6 border-t border-brand-line pt-5">
             <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong className="font-mono">{formatCurrency(total)}</strong></div>
+            {!freeShipping ? <p className="mt-1 text-xs font-semibold text-brand-inkSoft/70">El envio se calcula en el siguiente paso segun tu ciudad.</p> : null}
             {canCheckout ? (
               <Link href="/checkout" className="btn-primary mt-5 w-full" onClick={() => trackMetaPixelCustom('CheckoutClick', cartMetaPayload(items, total))}>Finalizar compra <ArrowRight size={18} className="ml-2" /></Link>
             ) : (
